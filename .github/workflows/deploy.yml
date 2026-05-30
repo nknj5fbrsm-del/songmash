@@ -24,7 +24,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_MODERATOR_KEY: ${{ secrets.VITE_MODERATOR_KEY }}
+          VITE_MODERATOR_KEY: songmash-admin-2026
           VITE_AUDIO_RESOLVER_URL: ${{ secrets.VITE_AUDIO_RESOLVER_URL }}
           VITE_AUDIO_PROXY_URL: ${{ secrets.VITE_AUDIO_PROXY_URL }}
 
