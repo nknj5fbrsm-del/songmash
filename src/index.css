@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  @apply min-h-screen bg-neutral-950 font-sans text-neutral-100 antialiased;
+}
+
+audio {
+  accent-color: #a3e635;
+}
+
+.card {
+  @apply rounded-2xl border border-neutral-800 bg-neutral-900/80 p-6;
+}
+
+.input-field {
+  @apply w-full rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-neutral-100 placeholder:text-neutral-500 transition-colors focus:border-lime-400/60 focus:outline-none focus:ring-2 focus:ring-lime-400/20;
+}
+
+.btn-primary {
+  @apply flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-6 py-4 text-lg font-semibold text-neutral-950 transition-all hover:bg-lime-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-lime-400;
+}
+
+.btn-secondary {
+  @apply flex items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-5 py-3 text-sm font-medium text-neutral-300 transition-colors hover:border-neutral-600 hover:bg-neutral-800 hover:text-neutral-100;
+}
+
+.btn-subtle {
+  @apply flex items-center justify-center gap-2 rounded-xl border border-lime-400/15 bg-lime-400/[0.04] px-5 py-3 text-sm font-medium text-neutral-400 transition-colors hover:border-lime-400/25 hover:bg-lime-400/[0.08] hover:text-lime-400/80;
+}
+
+.btn-ghost {
+  @apply rounded-xl border border-lime-400/30 bg-lime-400/10 px-6 py-3 font-medium text-lime-300 transition-colors hover:bg-lime-400/15 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.tag {
+  @apply rounded-full border border-lime-400/20 bg-lime-400/10 px-3 py-0.5 text-xs font-medium text-lime-300;
+}
+
+.page-title {
+  @apply text-3xl font-bold tracking-tight text-neutral-50;
+}
+
+.page-subtitle {
+  @apply mt-2 text-neutral-400;
+}
+
+.alert-success {
+  @apply rounded-xl border border-lime-400/25 bg-lime-400/10 px-4 py-3 text-sm text-lime-300;
+}
+
+.alert-error {
+  @apply rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300;
+}
+
+.nav-tab {
+  @apply flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-medium text-neutral-400 transition-colors hover:text-neutral-200 sm:text-base;
+}
+
+.nav-tab-active {
+  @apply bg-lime-400 text-neutral-950 shadow-lg shadow-lime-400/15 hover:text-neutral-950;
+}

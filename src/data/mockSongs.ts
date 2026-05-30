@@ -1,0 +1,58 @@
+import type { Song } from '../types/song'
+
+export const MOCK_SONGS: Song[] = [
+  {
+    id: 'a1000001-0001-4001-8001-000000000001',
+    title: 'Neon Pulse',
+    artist: 'AI Collective',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    eloRating: 1500,
+    techStackTags: ['Suno v3.5', 'Hybrid'],
+    submissionDate: '2025-01-15T10:00:00.000Z',
+  },
+  {
+    id: 'a1000001-0001-4001-8001-000000000002',
+    title: 'Digital Dreams',
+    artist: 'SynthWave AI',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    eloRating: 1500,
+    techStackTags: ['Udio', 'Vocal AI'],
+    submissionDate: '2025-02-01T14:30:00.000Z',
+  },
+  {
+    id: 'a1000001-0001-4001-8001-000000000003',
+    title: 'Midnight Circuit',
+    artist: 'Code Beats',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    eloRating: 1500,
+    techStackTags: ['Suno v4', 'Hybrid'],
+    submissionDate: '2025-02-10T09:15:00.000Z',
+  },
+  {
+    id: 'a1000001-0001-4001-8001-000000000004',
+    title: 'Chrome Heartbeat',
+    artist: 'Neural Noise',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    eloRating: 1500,
+    techStackTags: ['Custom Model', 'Hybrid'],
+    submissionDate: '2025-03-05T18:45:00.000Z',
+  },
+  {
+    id: 'a1000001-0001-4001-8001-000000000005',
+    title: 'Voltage Rush',
+    artist: 'Pixel Sound',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+    eloRating: 1500,
+    techStackTags: ['Suno v3.5', 'Mastering AI'],
+    submissionDate: '2025-03-20T11:00:00.000Z',
+  },
+  {
+    id: 'a1000001-0001-4001-8001-000000000006',
+    title: 'Echo Protocol',
+    artist: 'Data Drift',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+    eloRating: 1500,
+    techStackTags: ['Udio', 'Hybrid'],
+    submissionDate: '2025-04-01T16:20:00.000Z',
+  },
+]
