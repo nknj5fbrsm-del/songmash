@@ -4,5 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { audioResolverPlugin } from './vite-plugins/audioResolver'
 
 export default defineConfig({
+  base: '/songmash/',
   plugins: [react(), tailwindcss(), audioResolverPlugin()],
 })
