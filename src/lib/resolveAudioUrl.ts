@@ -1,3 +1,5 @@
+import { isSunoPageUrl, resolveSunoAudioUrl } from './sunoResolve'
+
 const AUDIO_EXTENSION = /\.(mp3|wav|ogg|m4a|aac|flac|webm)(\?|#|$)/i
 
 const PAGE_PLATFORMS = [
@@ -18,10 +20,13 @@ export type ResolveResult =
   | { ok: false; error: string }
 
 const RESOLVER_URL = import.meta.env.VITE_AUDIO_RESOLVER_URL as string | undefined
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 function getResolverUrl(): string | null {
-  if (RESOLVER_URL) return RESOLVER_URL
+  if (RESOLVER_URL) return RESOLVER_URL.replace(/\/$/, '')
   if (import.meta.env.DEV) return '/api/resolve-audio'
+  if (SUPABASE_URL) return `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1/resolve-audio`
   return null
 }
 
@@ -53,19 +58,25 @@ async function resolveViaBackend(sourceUrl: string): Promise<ResolveResult> {
     return { ok: false, error: 'Audio-Resolver ist nicht konfiguriert.' }
   }
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (SUPABASE_ANON_KEY) {
+    headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`
+    headers.apikey = SUPABASE_ANON_KEY
+  }
+
   try {
     const response = await fetch(resolverUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ url: sourceUrl }),
     })
 
-    const data = (await response.json()) as { audioUrl?: string; error?: string }
+    const data = (await response.json()) as { audioUrl?: string; error?: string; message?: string }
 
     if (!response.ok || !data.audioUrl) {
       return {
         ok: false,
-        error: data.error ?? 'Audio-Link konnte nicht aufgelöst werden.',
+        error: data.error ?? data.message ?? 'Audio-Link konnte nicht aufgelöst werden.',
       }
     }
 
@@ -97,6 +108,13 @@ export async function resolveAudioUrl(input: string): Promise<ResolveResult> {
   const host = parsed.hostname.toLowerCase()
 
   if (isPagePlatform(host)) {
+    if (isSunoPageUrl(trimmed)) {
+      const sunoAudio = await resolveSunoAudioUrl(trimmed)
+      if (sunoAudio) {
+        return { ok: true, audioUrl: sunoAudio, source: 'suno', sourceUrl: trimmed }
+      }
+    }
+
     const resolverUrl = getResolverUrl()
     if (resolverUrl) {
       return resolveViaBackend(trimmed)
@@ -105,7 +123,7 @@ export async function resolveAudioUrl(input: string): Promise<ResolveResult> {
     return {
       ok: false,
       error:
-        'Seiten-Links (Suno, Udio, YouTube …) brauchen den Audio-Resolver. Setze VITE_AUDIO_RESOLVER_URL für Production.',
+        'Seiten-Links (Udio, YouTube …) brauchen den Audio-Resolver. Suno-Links sollten direkt funktionieren — URL prüfen.',
     }
   }
 
