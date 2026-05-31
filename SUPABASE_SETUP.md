@@ -80,19 +80,30 @@ Elo wird danach aus allen verbleibenden Votes neu berechnet.
 
 ---
 
-## 6. Edge Functions deployen (für Suno in Production)
+## 6. Edge Functions deployen (für Suno-Links in Production)
+
+Suno-Audio kann im Browser nicht direkt von GitHub Pages abgespielt werden.  
+Die App importiert Suno-Links serverseitig in **Supabase Storage** (Function `import-audio`).
 
 ```bash
-supabase functions deploy resolve-audio
-supabase functions deploy proxy-audio
+npx supabase login
+npx supabase functions deploy import-audio --project-ref cwymmgfstfkgaiatbsev
 ```
 
-Danach in `.env.local` (bereits in `.env.example` vorbereitet):
+Optional (für Udio/YouTube-Auflösung und alte Suno-CDN-Links beim Voting):
+
+```bash
+npx supabase functions deploy resolve-audio proxy-audio --project-ref cwymmgfstfkgaiatbsev
+```
+
+Danach in `.env.local` optional (bereits in `.env.example` vorbereitet):
 
 ```env
 VITE_AUDIO_RESOLVER_URL=https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/resolve-audio
 VITE_AUDIO_PROXY_URL=https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/proxy-audio
 ```
+
+**Ohne deployte `import-audio`-Function** schlagen Suno-Seitenlinks in Production beim Test fehl.
 
 ---
 

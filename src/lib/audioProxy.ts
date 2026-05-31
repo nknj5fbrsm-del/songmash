@@ -16,12 +16,20 @@ function getProxyBase(): string | null {
   return null
 }
 
-/** Browser-taugliche URL — umgeht CORS via Proxy wenn nötig. */
 export function getPlayableAudioUrl(url: string): string {
+  if (isSupabaseStorageUrl(url)) return url
   if (!needsAudioProxy(url)) return url
 
   const base = getProxyBase()
   if (!base) return url
 
   return `${base}?url=${encodeURIComponent(url)}`
+}
+
+function isSupabaseStorageUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname.includes('/storage/v1/object/public/song-assets/')
+  } catch {
+    return false
+  }
 }

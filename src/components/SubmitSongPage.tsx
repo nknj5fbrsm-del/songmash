@@ -13,6 +13,7 @@ import { useSongs } from '../context/SongContext'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import { resolveAudioUrl, type AudioSource } from '../lib/resolveAudioUrl'
 import { testAudioPlayback } from '../lib/testAudio'
+import { prepareAudioForPlayback } from '../lib/importAudio'
 import {
   MAX_DESCRIPTION_LENGTH,
   resolveAudioFromFile,
@@ -170,7 +171,9 @@ export function SubmitSongPage() {
     setTestStatus('testing')
 
     try {
-      await testAudioPlayback(result.audioUrl)
+      const readyUrl = await prepareAudioForPlayback(result.audioUrl)
+      setResolvedUrl(readyUrl)
+      await testAudioPlayback(readyUrl)
       setTestStatus('ok')
     } catch (err) {
       setTestStatus('error')
@@ -309,7 +312,7 @@ export function SubmitSongPage() {
               {testStatus === 'resolving' || testStatus === 'testing' ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {testStatus === 'resolving' ? 'Link wird aufgelöst…' : 'Audio wird getestet…'}
+                  {testStatus === 'resolving' ? 'Link wird aufgelöst…' : 'Audio wird vorbereitet…'}
                 </>
               ) : (
                 <>
