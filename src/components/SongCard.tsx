@@ -62,10 +62,6 @@ export function SongCard({ song, side, onVote, onPlay, audioRef }: SongCardProps
       </div>
 
       <div className="mt-auto">
-        <div className="mb-4 text-center text-sm text-neutral-500">
-          Elo: <span className="font-mono text-neutral-300">{song.eloRating}</span>
-        </div>
-
         <button type="button" onClick={onVote} className="btn-primary w-full">
           <ThumbsUp className="h-5 w-5" />
           Vote
