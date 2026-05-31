@@ -107,9 +107,17 @@ export async function prepareCoverFile(file: File): Promise<File> {
 function fileExtension(file: File): string {
   const fromName = file.name.split('.').pop()?.toLowerCase()
   if (fromName) return fromName
-  if (file.type === 'audio/mpeg') return 'mp3'
+  if (file.type === 'audio/mpeg' || file.type === 'audio/mp3') return 'mp3'
   if (file.type === 'image/jpeg') return 'jpg'
   return 'bin'
+}
+
+function normalizeAudioContentType(raw: string): string {
+  const type = raw.split(';')[0].trim().toLowerCase()
+  if (type === 'audio/mp3' || type === 'audio/x-mpeg') return 'audio/mpeg'
+  if (type === 'audio/x-m4a') return 'audio/mp4'
+  if (['audio/mpeg', 'audio/wav', 'audio/mp4'].includes(type)) return type
+  return 'audio/mpeg'
 }
 
 export async function uploadAsset(file: File, folder: 'audio' | 'covers'): Promise<string> {
@@ -120,9 +128,13 @@ export async function uploadAsset(file: File, folder: 'audio' | 'covers'): Promi
   const supabase = getSupabaseClient()
   const path = `${folder}/${crypto.randomUUID()}.${fileExtension(file)}`
 
+  const contentType =
+    folder === 'audio' ? normalizeAudioContentType(file.type || 'audio/mpeg') : file.type
+
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '3600',
     upsert: false,
+    contentType,
   })
 
   if (error) {

@@ -8,6 +8,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { extractAudioFromPage } from '../_shared/extractAudioFromPage.ts'
 import { fetchProxiedAudio } from '../_shared/proxyAudio.ts'
+import { normalizeAudioContentType } from '../_shared/storageMime.ts'
 
 const BUCKET = 'song-assets'
 const corsHeaders = {
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
     const path = `audio/${crypto.randomUUID()}.mp3`
 
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, {
-      contentType: upstream.headers.get('content-type') ?? 'audio/mpeg',
+      contentType: normalizeAudioContentType(upstream.headers.get('content-type')),
       cacheControl: '3600',
       upsert: false,
     })
