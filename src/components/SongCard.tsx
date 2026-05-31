@@ -37,7 +37,7 @@ export function SongCard({ song, side, onVote, onPlay, audioRef }: SongCardProps
       <p className="mb-2 text-neutral-400">{song.artist}</p>
 
       {song.description && (
-        <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-neutral-400">
+        <p className="mb-4 text-sm leading-relaxed break-words text-neutral-400">
           {song.description}
         </p>
       )}

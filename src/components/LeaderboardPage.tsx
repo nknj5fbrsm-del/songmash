@@ -164,7 +164,9 @@ function LeaderboardRow({
             <div>
               <div className="font-medium text-neutral-100">{song.title}</div>
               {song.description && (
-                <div className="line-clamp-1 text-xs text-neutral-500">{song.description}</div>
+                <div className="text-xs leading-relaxed break-words text-neutral-500">
+                  {song.description}
+                </div>
               )}
             </div>
           </div>

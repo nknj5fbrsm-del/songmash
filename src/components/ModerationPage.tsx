@@ -166,7 +166,9 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
               <div className="font-medium text-neutral-100">{song.title}</div>
               <div className="text-sm text-neutral-400">{song.artist}</div>
               {song.description && (
-                <div className="mt-1 line-clamp-1 text-xs text-neutral-500">{song.description}</div>
+                <div className="mt-1 text-xs leading-relaxed break-words text-neutral-500">
+                  {song.description}
+                </div>
               )}
               <div className="mt-1 font-mono text-xs text-lime-400">Elo {song.eloRating}</div>
             </div>

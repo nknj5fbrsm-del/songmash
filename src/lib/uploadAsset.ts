@@ -7,7 +7,8 @@ const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export const MAX_AUDIO_BYTES = 15 * 1024 * 1024
 export const MAX_COVER_BYTES = 2 * 1024 * 1024
-export const MAX_DESCRIPTION_LENGTH = 280
+export const MAX_DESCRIPTION_LENGTH = 250
+export const MAX_TECH_TAGS_LENGTH = 100
 
 export function validateAudioFile(file: File): string | null {
   if (!AUDIO_TYPES.includes(file.type) && !/\.(mp3|wav|m4a)$/i.test(file.name)) {
@@ -17,6 +18,14 @@ export function validateAudioFile(file: File): string | null {
     return 'Audio-Datei ist zu groß (max. 15 MB).'
   }
   return null
+}
+
+export function parseTechTagsInput(input: string): string[] {
+  return input
+    .slice(0, MAX_TECH_TAGS_LENGTH)
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
 }
 
 export function validateCoverFile(file: File): string | null {

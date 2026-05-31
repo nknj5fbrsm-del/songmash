@@ -16,6 +16,8 @@ import { testAudioPlayback } from '../lib/testAudio'
 import { prepareAudioForPlayback } from '../lib/importAudio'
 import {
   MAX_DESCRIPTION_LENGTH,
+  MAX_TECH_TAGS_LENGTH,
+  parseTechTagsInput,
   resolveAudioFromFile,
   resolveCoverUrl,
   prepareCoverFile,
@@ -199,10 +201,7 @@ export function SubmitSongPage() {
       return
     }
 
-    const techStackTags = tagsInput
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
+    const techStackTags = parseTechTagsInput(tagsInput)
 
     setIsSubmitting(true)
 
@@ -423,10 +422,13 @@ export function SubmitSongPage() {
             id="tags"
             type="text"
             value={tagsInput}
-            onChange={(e) => setTagsInput(e.target.value)}
+            onChange={(e) => setTagsInput(e.target.value.slice(0, MAX_TECH_TAGS_LENGTH))}
             placeholder="Suno v3.5, Hybrid"
             className="input-field"
           />
+          <p className="mt-1 text-right text-xs text-neutral-500">
+            {tagsInput.length}/{MAX_TECH_TAGS_LENGTH}
+          </p>
         </Field>
 
         {error && (
