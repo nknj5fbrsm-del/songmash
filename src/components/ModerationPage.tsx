@@ -70,7 +70,7 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
               placeholder="Moderator-Key"
-              className="input-field pl-10"
+              className="input-field !pl-10"
             />
           </div>
           {authError && <p className="text-sm text-red-300">{authError}</p>}
