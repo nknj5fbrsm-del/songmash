@@ -17,8 +17,8 @@ import {
   MAX_DESCRIPTION_LENGTH,
   resolveAudioFromFile,
   resolveCoverUrl,
+  prepareCoverFile,
   validateAudioFile,
-  validateCoverFile,
 } from '../lib/uploadAsset'
 import { DropZone } from './DropZone'
 
@@ -57,6 +57,7 @@ export function SubmitSongPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
   const [coverError, setCoverError] = useState('')
+  const [isPreparingCover, setIsPreparingCover] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -89,16 +90,23 @@ export function SubmitSongPage() {
     resetAudioTest()
   }, [audioPreviewUrl, coverPreviewUrl, resetAudioTest])
 
-  const handleCoverFile = (file: File) => {
-    const validationError = validateCoverFile(file)
-    if (validationError) {
-      setCoverError(validationError)
-      return
-    }
+  const handleCoverFile = async (file: File) => {
     setCoverError('')
-    setCoverFile(file)
-    if (coverPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(coverPreviewUrl)
-    setCoverPreviewUrl(URL.createObjectURL(file))
+    setIsPreparingCover(true)
+
+    try {
+      const prepared = await prepareCoverFile(file)
+      setCoverFile(prepared)
+      if (coverPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(coverPreviewUrl)
+      setCoverPreviewUrl(URL.createObjectURL(prepared))
+    } catch (err) {
+      setCoverFile(null)
+      if (coverPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(coverPreviewUrl)
+      setCoverPreviewUrl(null)
+      setCoverError(err instanceof Error ? err.message : 'Cover konnte nicht verarbeitet werden.')
+    } finally {
+      setIsPreparingCover(false)
+    }
   }
 
   const clearCover = () => {
@@ -334,12 +342,18 @@ export function SubmitSongPage() {
 
         <DropZone
           label="Cover hierher ziehen (optional)"
-          hint="JPG, PNG oder WebP · max. 2 MB"
+          hint="JPG, PNG oder WebP · große Bilder werden automatisch auf max. 2 MB verkleinert"
           accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
           icon={<ImageIcon className="mb-2 h-8 w-8 text-lime-400" />}
           onFile={handleCoverFile}
+          disabled={isPreparingCover}
           preview={
-            coverPreviewUrl ? (
+            isPreparingCover ? (
+              <div className="flex items-center gap-2 text-sm text-neutral-400">
+                <Loader2 className="h-5 w-5 animate-spin text-lime-400" />
+                Cover wird optimiert…
+              </div>
+            ) : coverPreviewUrl ? (
               <div className="relative">
                 <img
                   src={coverPreviewUrl}

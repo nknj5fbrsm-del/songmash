@@ -1,14 +1,31 @@
-import { useRef, useState } from 'react'
-import { Headphones, Trophy } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Headphones, Search, Trophy } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 
 export function LeaderboardPage() {
   const { songs } = useSongs()
-  const ranked = [...songs].sort((a, b) => b.eloRating - a.eloRating)
+  const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+
+  const ranked = useMemo(
+    () =>
+      [...songs]
+        .sort((a, b) => b.eloRating - a.eloRating)
+        .map((song, index) => ({ song, rank: index + 1 })),
+    [songs],
+  )
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    if (!term) return ranked
+    return ranked.filter(
+      ({ song }) =>
+        song.title.toLowerCase().includes(term) || song.artist.toLowerCase().includes(term),
+    )
+  }, [ranked, query])
 
   const togglePlayer = (songId: string) => {
     setExpandedId((current) => (current === songId ? null : songId))
@@ -40,6 +57,27 @@ export function LeaderboardPage() {
       {ranked.length === 0 ? (
         <p className="text-center text-neutral-500">Noch keine Songs vorhanden.</p>
       ) : (
+        <>
+          <div className="relative mx-auto mb-4 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Titel oder Artist…"
+              className="input-field !pl-10"
+            />
+          </div>
+
+          {query.trim() && (
+            <p className="mb-4 text-center text-xs text-neutral-500">
+              {filtered.length} von {ranked.length} Songs
+            </p>
+          )}
+
+          {filtered.length === 0 ? (
+            <p className="text-center text-neutral-500">Keine Treffer für „{query.trim()}“.</p>
+          ) : (
         <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80">
           <table className="w-full text-left">
             <thead>
@@ -56,11 +94,11 @@ export function LeaderboardPage() {
               </tr>
             </thead>
             <tbody>
-              {ranked.map((song, index) => (
+              {filtered.map(({ song, rank }) => (
                 <LeaderboardRow
                   key={song.id}
                   song={song}
-                  index={index}
+                  rank={rank}
                   expanded={expandedId === song.id}
                   onToggle={() => togglePlayer(song.id)}
                   onPlay={() => pauseOthers(song.id)}
@@ -70,6 +108,8 @@ export function LeaderboardPage() {
             </tbody>
           </table>
         </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -77,14 +117,14 @@ export function LeaderboardPage() {
 
 function LeaderboardRow({
   song,
-  index,
+  rank,
   expanded,
   onToggle,
   onPlay,
   registerAudio,
 }: {
   song: Song
-  index: number
+  rank: number
   expanded: boolean
   onToggle: () => void
   onPlay: () => void
@@ -94,22 +134,22 @@ function LeaderboardRow({
     <>
       <tr
         className={`border-b border-neutral-800/60 transition-colors hover:bg-neutral-800/30 ${
-          index < 3 ? 'bg-lime-400/[0.03]' : ''
+          rank <= 3 ? 'bg-lime-400/[0.03]' : ''
         } ${expanded ? 'bg-neutral-800/20' : ''}`}
       >
         <td className="px-6 py-4">
           <span
             className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm font-bold ${
-              index === 0
+              rank === 1
                 ? 'bg-lime-400/20 text-lime-300'
-                : index === 1
+                : rank === 2
                   ? 'bg-lime-400/10 text-lime-400/80'
-                  : index === 2
+                  : rank === 3
                     ? 'bg-neutral-800 text-neutral-300'
                     : 'text-neutral-500'
             }`}
           >
-            {index + 1}
+            {rank}
           </span>
         </td>
         <td className="px-6 py-4">
