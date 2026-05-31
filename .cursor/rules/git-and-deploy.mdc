@@ -1,0 +1,12 @@
+---
+description: Git workflow and GitHub Pages deploy for SongMash
+alwaysApply: true
+---
+
+# Git & Deploy (SongMash)
+
+- Arbeite auf **`main`**, nicht auf Feature-Branches — es sei denn, der User verlangt ausdrücklich einen Branch/PR.
+- Nach abgeschlossenen Änderungen: **commit + push auf `origin/main`**, damit die Live-Seite aktualisiert wird.
+- Keine PRs erstellen, wenn der User das nicht explizit will.
+- Deploy läuft automatisch via `.github/workflows/deploy.yml` bei jedem Push auf `main` → `gh-pages`.
+- GitHub Pages-Quelle im Repo: **Deploy from branch `gh-pages` / (root)**.
