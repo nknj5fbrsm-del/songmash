@@ -8,6 +8,7 @@ import { LeaderboardPage } from './components/LeaderboardPage'
 import { SubmitSongPage } from './components/SubmitSongPage'
 import { ModerationPage } from './components/ModerationPage'
 import { ImpressumPage } from './components/ImpressumPage'
+import { DatenschutzPage } from './components/DatenschutzPage'
 import { useModerator } from './hooks/useModerator'
 
 function AppContent() {
@@ -28,7 +29,7 @@ function AppContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950">
-      {page !== 'moderation' && page !== 'impressum' && (
+      {page !== 'moderation' && page !== 'impressum' && page !== 'datenschutz' && (
         <Navigation current={page} onNavigate={setPage} />
       )}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
@@ -39,11 +40,13 @@ function AppContent() {
         {page === 'submit' && <SubmitSongPage />}
         {page === 'moderation' && <ModerationPage onBack={() => setPage('match')} />}
         {page === 'impressum' && <ImpressumPage onBack={() => setPage('match')} />}
+        {page === 'datenschutz' && <DatenschutzPage onBack={() => setPage('match')} />}
       </main>
       <Footer
         showModeration={isConfigured}
         onModeration={() => setPage('moderation')}
         onImpressum={() => setPage('impressum')}
+        onDatenschutz={() => setPage('datenschutz')}
       />
     </div>
   )
