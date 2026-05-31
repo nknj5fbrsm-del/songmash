@@ -11,6 +11,7 @@ import { MOCK_SONGS } from '../data/mockSongs'
 import { calculateElo } from '../lib/elo'
 import { pickRandomMatch } from '../lib/match'
 import { getSongRepository, getStorageMode } from '../lib/repository'
+import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
 import type { Song, VoteMatch, VoteResult } from '../types/song'
 
 interface SongContextValue {
@@ -19,6 +20,7 @@ interface SongContextValue {
   isLoading: boolean
   error: string | null
   storageMode: 'supabase' | 'local'
+  voteCounts: Map<string, number>
   vote: (result: VoteResult) => Promise<void>
   submitSong: (data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>) => Promise<void>
   removeSong: (songId: string) => Promise<void>
@@ -32,6 +34,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const storageMode = useMemo(() => getStorageMode(), [])
 
   const [songs, setSongs] = useState<Song[]>([])
+  const [voteCounts, setVoteCounts] = useState<Map<string, number>>(() => new Map())
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,10 +48,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
       try {
         await repository.seedIfEmpty(MOCK_SONGS)
-        const loaded = await repository.getAll()
+        const [loaded, votes] = await Promise.all([repository.getAll(), repository.getAllVotes()])
         if (cancelled) return
 
         setSongs(loaded)
+        setVoteCounts(computeVoteCounts(votes))
         setCurrentMatch(pickRandomMatch(loaded))
       } catch (err) {
         if (cancelled) return
@@ -74,6 +78,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
       if (result === 'skip') {
         await repository.recordVote(currentMatch.songA.id, currentMatch.songB.id, 'skip')
+        setVoteCounts((counts) =>
+          incrementVoteCounts(counts, currentMatch.songA.id, currentMatch.songB.id),
+        )
         setCurrentMatch(pickRandomMatch(songs))
         return
       }
@@ -96,6 +103,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
         })
 
         setSongs(updated)
+        setVoteCounts((counts) => incrementVoteCounts(counts, songA.id, songB.id))
         setCurrentMatch(pickRandomMatch(updated))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vote konnte nicht gespeichert werden.')
@@ -123,7 +131,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
     async (songId: string) => {
       try {
         const updated = await repository.deleteSongAndRecalculate(songId)
+        const votes = await repository.getAllVotes()
         setSongs(updated)
+        setVoteCounts(computeVoteCounts(votes))
         setCurrentMatch(pickRandomMatch(updated))
         setError(null)
       } catch (err) {
@@ -141,12 +151,13 @@ export function SongProvider({ children }: { children: ReactNode }) {
       isLoading,
       error,
       storageMode,
+      voteCounts,
       vote,
       submitSong,
       removeSong,
       refreshMatch,
     }),
-    [songs, currentMatch, isLoading, error, storageMode, vote, submitSong, removeSong, refreshMatch],
+    [songs, currentMatch, isLoading, error, storageMode, voteCounts, vote, submitSong, removeSong, refreshMatch],
   )
 
   return <SongContext.Provider value={value}>{children}</SongContext.Provider>

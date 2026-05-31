@@ -1,4 +1,4 @@
-import type { Song, VoteResult } from '../types/song'
+import type { Song, VoteRecord, VoteResult } from '../types/song'
 import { isSupabaseConfigured } from './supabaseClient'
 import { localSongRepository } from './storage'
 import { supabaseSongRepository } from './supabaseStorage'
@@ -13,6 +13,7 @@ export interface SongRepository {
     newRatingB: number,
   ): Promise<void>
   recordVote(songAId: string, songBId: string, winner: VoteResult): Promise<void>
+  getAllVotes(): Promise<VoteRecord[]>
   seedIfEmpty(seedSongs: Song[]): Promise<void>
   deleteSongAndRecalculate(songId: string): Promise<Song[]>
 }
@@ -44,6 +45,10 @@ const localAsyncRepository: SongRepository = {
 
   async recordVote() {
     // Vote history only persisted in Supabase
+  },
+
+  async getAllVotes() {
+    return []
   },
 
   async seedIfEmpty(seedSongs) {

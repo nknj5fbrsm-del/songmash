@@ -5,7 +5,7 @@ import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 
 export function LeaderboardPage() {
-  const { songs } = useSongs()
+  const { songs, voteCounts } = useSongs()
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
@@ -85,11 +85,11 @@ export function LeaderboardPage() {
                 <th className="px-6 py-4 font-semibold">#</th>
                 <th className="px-6 py-4 font-semibold">Titel</th>
                 <th className="px-6 py-4 font-semibold">Artist</th>
-                <th className="hidden px-6 py-4 font-semibold sm:table-cell">Tags</th>
                 <th className="px-4 py-4 font-semibold sm:px-6">
                   <span className="sr-only">Anhören</span>
                   <Headphones className="mx-auto h-4 w-4" aria-hidden />
                 </th>
+                <th className="px-6 py-4 text-right font-semibold">Votes</th>
                 <th className="px-6 py-4 text-right font-semibold">Elo</th>
               </tr>
             </thead>
@@ -99,6 +99,7 @@ export function LeaderboardPage() {
                   key={song.id}
                   song={song}
                   rank={rank}
+                  voteCount={voteCounts.get(song.id) ?? 0}
                   expanded={expandedId === song.id}
                   onToggle={() => togglePlayer(song.id)}
                   onPlay={() => pauseOthers(song.id)}
@@ -118,6 +119,7 @@ export function LeaderboardPage() {
 function LeaderboardRow({
   song,
   rank,
+  voteCount,
   expanded,
   onToggle,
   onPlay,
@@ -125,6 +127,7 @@ function LeaderboardRow({
 }: {
   song: Song
   rank: number
+  voteCount: number
   expanded: boolean
   onToggle: () => void
   onPlay: () => void
@@ -161,26 +164,10 @@ function LeaderboardRow({
                 ♪
               </div>
             )}
-            <div>
-              <div className="font-medium text-neutral-100">{song.title}</div>
-              {song.description && (
-                <div className="text-xs leading-relaxed break-words text-neutral-500">
-                  {song.description}
-                </div>
-              )}
-            </div>
+            <div className="font-medium text-neutral-100">{song.title}</div>
           </div>
         </td>
         <td className="px-6 py-4 text-neutral-400">{song.artist}</td>
-        <td className="hidden px-6 py-4 sm:table-cell">
-          <div className="flex flex-wrap gap-1">
-            {song.techStackTags.map((tag) => (
-              <span key={tag} className="tag px-2">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </td>
         <td className="px-4 py-4 text-center sm:px-6">
           <button
             type="button"
@@ -196,6 +183,7 @@ function LeaderboardRow({
             <Headphones className="h-4 w-4" />
           </button>
         </td>
+        <td className="px-6 py-4 text-right font-mono text-neutral-300">{voteCount}</td>
         <td className="px-6 py-4 text-right font-mono font-semibold text-lime-400">
           {song.eloRating}
         </td>
