@@ -1,6 +1,6 @@
 import { Music2, Trophy, Upload } from 'lucide-react'
 
-export type Page = 'match' | 'leaderboard' | 'submit' | 'moderation'
+export type Page = 'match' | 'leaderboard' | 'submit' | 'moderation' | 'impressum'
 
 interface NavigationProps {
   current: Page
