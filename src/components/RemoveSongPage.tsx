@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
-import { isSupabaseConfigured } from '../lib/supabaseClient'
 
 interface RemoveSongPageProps {
   onBack?: () => void
 }
 
 export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
-  const { deleteSongByToken, storageMode } = useSongs()
+  const { deleteSongByToken } = useSongs()
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -30,9 +29,6 @@ export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
       setIsDeleting(false)
     }
   }
-
-  const needsDeploy =
-    storageMode === 'supabase' && isSupabaseConfigured()
 
   return (
     <div className="mx-auto max-w-md">
@@ -82,14 +78,6 @@ export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
             Song endgültig entfernen
           </button>
         </form>
-
-        {needsDeploy && (
-          <p className="mt-6 text-xs text-neutral-600">
-            Hinweis: Die Edge Function{' '}
-            <code className="text-neutral-500">delete-song-by-token</code> muss auf Supabase
-            deployed sein.
-          </p>
-        )}
       </div>
     </div>
   )
