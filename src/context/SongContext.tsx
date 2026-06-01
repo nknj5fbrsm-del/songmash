@@ -11,6 +11,7 @@ import { MOCK_SONGS } from '../data/mockSongs'
 import { calculateElo } from '../lib/elo'
 import { pickRandomMatch } from '../lib/match'
 import { getSongRepository, getStorageMode } from '../lib/repository'
+import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
 import type { Song, VoteMatch, VoteResult } from '../types/song'
 
@@ -22,7 +23,11 @@ interface SongContextValue {
   storageMode: 'supabase' | 'local'
   voteCounts: Map<string, number>
   vote: (result: VoteResult) => Promise<void>
-  submitSong: (data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>) => Promise<void>
+  submitSong: (
+    data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
+    deletionTokenHash: string,
+  ) => Promise<void>
+  deleteSongByToken: (token: string) => Promise<{ title: string }>
   removeSong: (songId: string) => Promise<void>
   refreshMatch: () => void
 }
@@ -113,9 +118,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
   )
 
   const submitSong = useCallback(
-    async (data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>) => {
+    async (data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>, deletionTokenHash: string) => {
       try {
-        const newSong = await repository.insert(data)
+        const newSong = await repository.insert(data, deletionTokenHash)
         const updated = [...songs, newSong]
         setSongs(updated)
         setError(null)
@@ -125,6 +130,19 @@ export function SongProvider({ children }: { children: ReactNode }) {
       }
     },
     [songs, repository],
+  )
+
+  const deleteSongByToken = useCallback(
+    async (token: string) => {
+      const result = await deleteSongByTokenRequest(token)
+      const { songs: reloaded, voteCounts: counts } = await reloadSongsAfterTokenDelete()
+      setSongs(reloaded)
+      setVoteCounts(counts)
+      setCurrentMatch(pickRandomMatch(reloaded))
+      setError(null)
+      return result
+    },
+    [],
   )
 
   const removeSong = useCallback(
@@ -154,10 +172,23 @@ export function SongProvider({ children }: { children: ReactNode }) {
       voteCounts,
       vote,
       submitSong,
+      deleteSongByToken,
       removeSong,
       refreshMatch,
     }),
-    [songs, currentMatch, isLoading, error, storageMode, voteCounts, vote, submitSong, removeSong, refreshMatch],
+    [
+      songs,
+      currentMatch,
+      isLoading,
+      error,
+      storageMode,
+      voteCounts,
+      vote,
+      submitSong,
+      deleteSongByToken,
+      removeSong,
+      refreshMatch,
+    ],
   )
 
   return <SongContext.Provider value={value}>{children}</SongContext.Provider>

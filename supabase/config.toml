@@ -25,3 +25,6 @@ verify_jwt = false
 
 [functions.proxy-audio]
 verify_jwt = false
+
+[functions.delete-song-by-token]
+verify_jwt = false

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   CheckCircle,
+  Copy,
   FileAudio,
   ImageIcon,
   Link2,
@@ -9,6 +10,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import { createDeletionToken } from '../lib/deletionToken'
 import { useSongs } from '../context/SongContext'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import { resolveAudioUrl, type AudioSource } from '../lib/resolveAudioUrl'
@@ -44,7 +46,8 @@ export function SubmitSongPage() {
   const [artist, setArtist] = useState('')
   const [description, setDescription] = useState('')
   const [tagsInput, setTagsInput] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [deletionToken, setDeletionToken] = useState<string | null>(null)
+  const [copyHint, setCopyHint] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -217,20 +220,23 @@ export function SubmitSongPage() {
       }
 
       const coverUrl = await resolveCoverUrl(coverFile)
+      const { token, tokenHash } = await createDeletionToken()
 
-      await submitSong({
-        title: title.trim(),
-        artist: artist.trim(),
-        audioUrl,
-        sourceUrl: tab === 'link' ? (sourceUrl ?? undefined) : undefined,
-        coverUrl,
-        description: description.trim() || undefined,
-        techStackTags,
-      })
+      await submitSong(
+        {
+          title: title.trim(),
+          artist: artist.trim(),
+          audioUrl,
+          sourceUrl: tab === 'link' ? (sourceUrl ?? undefined) : undefined,
+          coverUrl,
+          description: description.trim() || undefined,
+          techStackTags,
+        },
+        tokenHash,
+      )
 
       resetForm()
-      setSubmitted(true)
-      setTimeout(() => setSubmitted(false), 3000)
+      setDeletionToken(token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Song konnte nicht eingereicht werden.')
     } finally {
@@ -435,11 +441,46 @@ export function SubmitSongPage() {
           <p className="alert-error">{error}</p>
         )}
 
-        {submitted && (
-          <p className="alert-success flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Song erfolgreich eingereicht!
-          </p>
+        {deletionToken && (
+          <div className="rounded-xl border border-lime-400/30 bg-lime-400/10 p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-lime-300">
+              <CheckCircle className="h-4 w-4 shrink-0" />
+              Song eingereicht — Lösch-Code sichern
+            </p>
+            <p className="mb-3 text-xs leading-relaxed text-neutral-400">
+              Dieser Code wird nur einmal angezeigt. Mit ihm kannst du den Song später selbst
+              entfernen (Footer → Song entfernen). Ohne Code nur per Anfrage an den Betreiber.
+            </p>
+            <div className="flex items-center gap-2 rounded-lg bg-neutral-950/60 px-3 py-2">
+              <code className="flex-1 break-all font-mono text-sm text-neutral-100">
+                {deletionToken}
+              </code>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(deletionToken)
+                    setCopyHint('Kopiert!')
+                    setTimeout(() => setCopyHint(''), 2000)
+                  } catch {
+                    setCopyHint('Kopieren fehlgeschlagen')
+                  }
+                }}
+                className="btn-secondary shrink-0 px-3 py-2"
+                aria-label="Lösch-Code kopieren"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            {copyHint && <p className="mt-2 text-xs text-lime-400/90">{copyHint}</p>}
+            <button
+              type="button"
+              onClick={() => setDeletionToken(null)}
+              className="mt-3 text-xs text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+            >
+              Hinweis schließen
+            </button>
+          </div>
         )}
 
         <button

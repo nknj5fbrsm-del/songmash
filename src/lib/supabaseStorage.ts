@@ -58,11 +58,14 @@ export const supabaseSongRepository = {
     return (data ?? []).map(rowToSong)
   },
 
-  async insert(data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>): Promise<Song> {
+  async insert(
+    data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
+    deletionTokenHash: string,
+  ): Promise<Song> {
     const supabase = getSupabaseClient()
     const { data: row, error } = await supabase
       .from('songs')
-      .insert(songToInsert(data))
+      .insert({ ...songToInsert(data), deletion_token_hash: deletionTokenHash })
       .select('*')
       .single()
 

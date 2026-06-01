@@ -1,11 +1,15 @@
 import type { Song, VoteRecord, VoteResult } from '../types/song'
 import { isSupabaseConfigured } from './supabaseClient'
+import { setDeletionHash } from './localDeletionHashes'
 import { localSongRepository } from './storage'
 import { supabaseSongRepository } from './supabaseStorage'
 
 export interface SongRepository {
   getAll(): Promise<Song[]>
-  insert(data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>): Promise<Song>
+  insert(
+    data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
+    deletionTokenHash: string,
+  ): Promise<Song>
   updateEloRatings(
     songAId: string,
     newRatingA: number,
@@ -23,7 +27,7 @@ const localAsyncRepository: SongRepository = {
     return localSongRepository.getAll()
   },
 
-  async insert(data) {
+  async insert(data, deletionTokenHash) {
     const song: Song = {
       ...data,
       id: crypto.randomUUID(),
@@ -31,6 +35,7 @@ const localAsyncRepository: SongRepository = {
       submissionDate: new Date().toISOString(),
     }
     localSongRepository.add(song)
+    setDeletionHash(song.id, deletionTokenHash)
     return song
   },
 

@@ -100,7 +100,12 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
             <li>
               <strong className="text-neutral-300">Edge Functions:</strong> beim Einreichen externer
               Links (z. B. Suno) werden URLs serverseitig verarbeitet, um Audio für die Wiedergabe
-              bereitzustellen
+              bereitzustellen; zum Löschen per Lösch-Code wird der Code serverseitig geprüft
+            </li>
+            <li>
+              <strong className="text-neutral-300">Lösch-Code:</strong> beim Einreichen wird ein
+              zufälliger Code erzeugt und dir einmal angezeigt. In der Datenbank speichern wir nur
+              einen kryptografischen Hash — nicht den Code selbst
             </li>
           </ul>
           <p>
@@ -157,11 +162,16 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           <p>Es werden keine Tracking-Cookies gesetzt.</p>
         </Section>
 
-        <Section title="8. Speicherdauer">
+        <Section title="8. Speicherdauer und Löschung">
           <p>
             Eingereichte Songs und Abstimmungen bleiben gespeichert, solange sie für den Betrieb der
-            Plattform benötigt werden. Songs können durch Moderation entfernt werden. Auf Anfrage
-            prüfen wir die Löschung personenbezogener Inhalte, soweit uns diese zuordenbar sind.
+            Plattform benötigt werden.
+          </p>
+          <p>
+            Du kannst deinen eigenen Song mit dem beim Einreichen erhaltenen{' '}
+            <strong className="text-neutral-300">Lösch-Code</strong> unter „Song entfernen“
+            löschen. Ohne Code ist eine Zuordnung nicht möglich; dann nur Löschung durch den
+            Betreiber nach Prüfung (z. B. bei berechtigten Anfragen).
           </p>
         </Section>
 

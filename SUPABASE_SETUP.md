@@ -80,7 +80,12 @@ Elo wird danach aus allen verbleibenden Votes neu berechnet.
 
 ---
 
-## 6. Edge Functions deployen (für Suno-Links in Production)
+## 6. Lösch-Code-Migration
+
+Im **SQL Editor** (Production) ausführen:  
+`supabase/migrations/20260531150000_deletion_token.sql`
+
+## 7. Edge Functions deployen (für Suno-Links in Production)
 
 Suno-Audio kann im Browser nicht direkt von GitHub Pages abgespielt werden.  
 Die App importiert Suno-Links serverseitig in **Supabase Storage** (Function `import-audio`).
@@ -88,7 +93,10 @@ Die App importiert Suno-Links serverseitig in **Supabase Storage** (Function `im
 ```bash
 npx supabase login
 npx supabase functions deploy import-audio --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy delete-song-by-token --project-ref cwymmgfstfkgaiatbsev
 ```
+
+**Ohne `delete-song-by-token`** funktioniert „Song entfernen“ per Lösch-Code nicht.
 
 Optional (für Udio/YouTube-Auflösung und alte Suno-CDN-Links beim Voting):
 
@@ -107,7 +115,7 @@ VITE_AUDIO_PROXY_URL=https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/proxy
 
 ---
 
-## 7. App starten
+## 8. App starten
 
 ```bash
 npm run dev

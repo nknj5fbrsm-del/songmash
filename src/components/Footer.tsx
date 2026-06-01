@@ -5,6 +5,7 @@ interface FooterProps {
   onModeration?: () => void
   onImpressum?: () => void
   onDatenschutz?: () => void
+  onRemoveSong?: () => void
 }
 
 export function Footer({
@@ -12,12 +13,13 @@ export function Footer({
   onModeration,
   onImpressum,
   onDatenschutz,
+  onRemoveSong,
 }: FooterProps) {
   return (
     <footer className="mt-auto border-t border-neutral-800/60 py-6">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 text-center text-xs text-neutral-600">
         <p>SongMash · Community-Voting für KI-Musik</p>
-        {(onImpressum || onDatenschutz) && (
+        {(onImpressum || onDatenschutz || onRemoveSong) && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             {onImpressum && (
               <button
@@ -28,7 +30,7 @@ export function Footer({
                 Impressum
               </button>
             )}
-            {onImpressum && onDatenschutz && <span aria-hidden="true">·</span>}
+            {onImpressum && (onDatenschutz || onRemoveSong) && <span aria-hidden="true">·</span>}
             {onDatenschutz && (
               <button
                 type="button"
@@ -36,6 +38,16 @@ export function Footer({
                 className="text-neutral-600 transition-colors hover:text-neutral-400"
               >
                 Datenschutz
+              </button>
+            )}
+            {onDatenschutz && onRemoveSong && <span aria-hidden="true">·</span>}
+            {onRemoveSong && (
+              <button
+                type="button"
+                onClick={onRemoveSong}
+                className="text-neutral-600 transition-colors hover:text-neutral-400"
+              >
+                Song entfernen
               </button>
             )}
           </div>
