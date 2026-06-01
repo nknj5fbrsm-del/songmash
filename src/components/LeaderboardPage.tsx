@@ -78,19 +78,24 @@ export function LeaderboardPage() {
           {filtered.length === 0 ? (
             <p className="text-center text-neutral-500">Keine Treffer für „{query.trim()}“.</p>
           ) : (
-        <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80">
-          <table className="w-full text-left">
+        <div className="-mx-4 overflow-x-auto overscroll-x-contain sm:mx-0">
+          <div className="inline-block min-w-full rounded-2xl border border-neutral-800 bg-neutral-900/80">
+          <table className="w-full min-w-[22rem] text-left">
             <thead>
               <tr className="border-b border-neutral-800 bg-neutral-900 text-xs uppercase tracking-wider text-neutral-500">
-                <th className="px-6 py-4 font-semibold">#</th>
-                <th className="px-6 py-4 font-semibold">Titel</th>
-                <th className="px-6 py-4 font-semibold">Artist</th>
-                <th className="px-4 py-4 font-semibold sm:px-6">
+                <th className="px-2 py-3 font-semibold sm:px-6 sm:py-4">#</th>
+                <th className="px-2 py-3 font-semibold sm:px-6 sm:py-4">Titel</th>
+                <th className="hidden px-6 py-4 font-semibold sm:table-cell">Artist</th>
+                <th className="w-11 px-1 py-3 font-semibold sm:w-auto sm:px-6 sm:py-4">
                   <span className="sr-only">Anhören</span>
                   <Headphones className="mx-auto h-4 w-4" aria-hidden />
                 </th>
-                <th className="px-6 py-4 text-right font-semibold">Votes</th>
-                <th className="px-6 py-4 text-right font-semibold">Elo</th>
+                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
+                  Votes
+                </th>
+                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
+                  Elo
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -108,6 +113,7 @@ export function LeaderboardPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
           )}
         </>
@@ -140,9 +146,9 @@ function LeaderboardRow({
           rank <= 3 ? 'bg-lime-400/[0.03]' : ''
         } ${expanded ? 'bg-neutral-800/20' : ''}`}
       >
-        <td className="px-6 py-4">
+        <td className="px-2 py-3 sm:px-6 sm:py-4">
           <span
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm font-bold ${
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg font-mono text-xs font-bold sm:h-8 sm:w-8 sm:text-sm ${
               rank === 1
                 ? 'bg-lime-400/20 text-lime-300'
                 : rank === 2
@@ -155,26 +161,33 @@ function LeaderboardRow({
             {rank}
           </span>
         </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-3">
+        <td className="max-w-[10rem] px-2 py-3 sm:max-w-none sm:px-6 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {song.coverUrl ? (
-              <img src={song.coverUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              <img
+                src={song.coverUrl}
+                alt=""
+                className="h-8 w-8 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10"
+              />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500 sm:h-10 sm:w-10">
                 ♪
               </div>
             )}
-            <div className="font-medium text-neutral-100">{song.title}</div>
+            <div className="min-w-0">
+              <div className="truncate font-medium text-neutral-100">{song.title}</div>
+              <div className="truncate text-xs text-neutral-500 sm:hidden">{song.artist}</div>
+            </div>
           </div>
         </td>
-        <td className="px-6 py-4 text-neutral-400">{song.artist}</td>
-        <td className="px-4 py-4 text-center sm:px-6">
+        <td className="hidden px-6 py-4 text-neutral-400 sm:table-cell">{song.artist}</td>
+        <td className="w-11 px-1 py-3 text-center sm:w-auto sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-label={expanded ? `${song.title} ausblenden` : `${song.title} anhören`}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${
               expanded
                 ? 'bg-lime-400 text-neutral-950'
                 : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-lime-400'
@@ -183,14 +196,16 @@ function LeaderboardRow({
             <Headphones className="h-4 w-4" />
           </button>
         </td>
-        <td className="px-6 py-4 text-right font-mono text-neutral-300">{voteCount}</td>
-        <td className="px-6 py-4 text-right font-mono font-semibold text-lime-400">
+        <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm text-neutral-300 sm:px-6 sm:py-4 sm:text-base">
+          {voteCount}
+        </td>
+        <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm font-semibold text-lime-400 sm:px-6 sm:py-4 sm:text-base">
           {song.eloRating}
         </td>
       </tr>
       {expanded && (
         <tr className="border-b border-neutral-800/60 bg-neutral-800/10">
-          <td colSpan={6} className="px-6 py-4">
+          <td colSpan={6} className="px-2 py-3 sm:px-6 sm:py-4">
             <div className="mx-auto max-w-xl rounded-xl bg-neutral-800/50 p-3">
               <audio
                 ref={(el) => registerAudio(song.id, el)}
