@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef } from 'react'
 import { Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
 import { SongCard } from './SongCard'
+import { VoteBadge } from './VoteBadge'
 
 export function MatchPage() {
-  const { currentMatch, vote } = useSongs()
+  const { currentMatch, vote, userVoteCount } = useSongs()
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
 
@@ -50,7 +51,7 @@ export function MatchPage() {
         </p>
       </header>
 
-      <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-center">
+      <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-stretch">
         <SongCard
           key={songA.id}
           song={songA}
@@ -60,11 +61,12 @@ export function MatchPage() {
           onVote={() => vote('A')}
         />
 
-        <div className="flex shrink-0 items-center justify-center lg:w-36">
+        <div className="flex w-full flex-col items-center justify-center gap-4 py-2 lg:w-44 lg:shrink-0 lg:self-center">
+          <VoteBadge count={userVoteCount} />
           <button
             type="button"
             onClick={() => vote('skip')}
-            className="btn-subtle"
+            className="btn-subtle w-full max-w-xs lg:max-w-none"
           >
             <Shuffle className="h-4 w-4" />
             Skip / Unentschieden

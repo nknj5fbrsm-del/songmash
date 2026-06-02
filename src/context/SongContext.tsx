@@ -12,6 +12,7 @@ import { calculateElo } from '../lib/elo'
 import { pickRandomMatch } from '../lib/match'
 import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
+import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
 import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
 import type { Song, VoteMatch, VoteResult } from '../types/song'
 
@@ -22,6 +23,7 @@ interface SongContextValue {
   error: string | null
   storageMode: 'supabase' | 'local'
   voteCounts: Map<string, number>
+  userVoteCount: number
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
@@ -43,6 +45,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
 
   useEffect(() => {
     let cancelled = false
@@ -109,6 +112,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
         setSongs(updated)
         setVoteCounts((counts) => incrementVoteCounts(counts, songA.id, songB.id))
+        setUserVoteCount(incrementUserVoteCount())
         setCurrentMatch(pickRandomMatch(updated))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vote konnte nicht gespeichert werden.')
@@ -170,6 +174,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      userVoteCount,
       vote,
       submitSong,
       deleteSongByToken,
@@ -183,6 +188,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      userVoteCount,
       vote,
       submitSong,
       deleteSongByToken,
