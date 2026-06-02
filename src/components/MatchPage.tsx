@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
 import { SongCard } from './SongCard'
@@ -12,6 +12,19 @@ export function MatchPage() {
     if (which === 'A') audioRefB.current?.pause()
     else audioRefA.current?.pause()
   }, [])
+
+  const resetPlayers = useCallback(() => {
+    for (const audio of [audioRefA.current, audioRefB.current]) {
+      if (!audio) continue
+      audio.pause()
+      audio.currentTime = 0
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!currentMatch) return
+    resetPlayers()
+  }, [currentMatch?.songA.id, currentMatch?.songB.id, resetPlayers])
 
   if (!currentMatch) {
     return (
@@ -39,6 +52,7 @@ export function MatchPage() {
 
       <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-center">
         <SongCard
+          key={songA.id}
           song={songA}
           side="A"
           audioRef={audioRefA}
@@ -58,6 +72,7 @@ export function MatchPage() {
         </div>
 
         <SongCard
+          key={songB.id}
           song={songB}
           side="B"
           audioRef={audioRefB}
