@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { token } = (await req.json()) as { token?: string }
+    const { token, preview } = (await req.json()) as { token?: string; preview?: boolean }
     if (!token?.trim()) return json({ error: 'Lösch-Code fehlt.' }, 400)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     const { data: candidates, error: findError } = await supabase
       .from('songs')
-      .select('id, title, audio_url, cover_url, deletion_token_hash')
+      .select('id, title, artist, audio_url, cover_url, deletion_token_hash')
       .not('deletion_token_hash', 'is', null)
 
     if (findError) return json({ error: findError.message }, 500)
@@ -63,6 +63,10 @@ Deno.serve(async (req) => {
 
     if (!row) {
       return json({ error: 'Ungültiger Lösch-Code.' }, 404)
+    }
+
+    if (preview === true) {
+      return json({ preview: true, title: row.title, artist: row.artist })
     }
 
     const storagePaths = collectStoragePaths(row)

@@ -1,9 +1,16 @@
-import { useState, type FormEvent } from 'react'
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react'
+import { useRef, useState, type FormEvent } from 'react'
+import { ArrowLeft, Loader2, Search, Trash2 } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
+import { previewDeletionByToken, type DeletionPreview } from '../lib/deleteSongByToken'
 
 interface RemoveSongPageProps {
   onBack?: () => void
+}
+
+function tokenTail(token: string): string {
+  const t = token.trim()
+  if (t.length <= 8) return t
+  return `…${t.slice(-6)}`
 }
 
 export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
@@ -11,24 +18,77 @@ export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const [preview, setPreview] = useState<DeletionPreview | null>(null)
+  const [confirmedToken, setConfirmedToken] = useState<string | null>(null)
+  const deleteRequestId = useRef(0)
 
-  const handleSubmit = async (e: FormEvent) => {
+  const resetPreview = () => {
+    setPreview(null)
+    setConfirmedToken(null)
+  }
+
+  const handleTokenChange = (value: string) => {
+    setToken(value)
+    setError('')
+    if (confirmedToken !== null && value.trim() !== confirmedToken) {
+      resetPreview()
+    }
+  }
+
+  const handlePreview = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
-    setIsDeleting(true)
+    resetPreview()
+    setIsBusy(true)
 
     try {
-      const { title } = await deleteSongByToken(token)
-      setSuccess(`„${title}“ wurde entfernt.`)
-      setToken('')
+      const trimmed = token.trim()
+      const result = await previewDeletionByToken(trimmed)
+      setPreview(result)
+      setConfirmedToken(trimmed)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
+      setError(err instanceof Error ? err.message : 'Code konnte nicht geprüft werden.')
     } finally {
-      setIsDeleting(false)
+      setIsBusy(false)
     }
   }
+
+  const handleConfirmDelete = async () => {
+    if (!preview || !confirmedToken || token.trim() !== confirmedToken) {
+      setError('Bitte den Code erneut prüfen.')
+      resetPreview()
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    const requestId = ++deleteRequestId.current
+    setIsBusy(true)
+
+    try {
+      const { title } = await deleteSongByToken(confirmedToken)
+      if (requestId !== deleteRequestId.current) return
+
+      setSuccess(
+        `„${title}“ wurde entfernt. Der Lösch-Code ${tokenTail(confirmedToken)} ist jetzt verbraucht und kann nicht erneut verwendet werden.`,
+      )
+      setToken('')
+      resetPreview()
+    } catch (err) {
+      if (requestId !== deleteRequestId.current) return
+      setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
+    } finally {
+      if (requestId === deleteRequestId.current) {
+        setIsBusy(false)
+      }
+    }
+  }
+
+  const canPreview = Boolean(token.trim()) && !isBusy
+  const canConfirmDelete =
+    Boolean(preview && confirmedToken && token.trim() === confirmedToken) && !isBusy
 
   return (
     <div className="mx-auto max-w-md">
@@ -49,11 +109,11 @@ export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
           Song entfernen
         </h1>
         <p className="mb-6 text-sm text-neutral-400">
-          Gib den Lösch-Code ein, den du nach dem Einreichen erhalten hast. Ohne Code kann der Song
-          nicht automatisch zugeordnet werden.
+          Gib den Lösch-Code ein, den du nach dem Einreichen erhalten hast. Zuerst wird angezeigt,
+          welcher Song gemeint ist — erst nach deiner Bestätigung wird er gelöscht.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handlePreview} className="space-y-4">
           <div>
             <label htmlFor="deletion-token" className="mb-1.5 block text-sm font-medium text-neutral-300">
               Lösch-Code
@@ -62,21 +122,61 @@ export function RemoveSongPage({ onBack }: RemoveSongPageProps) {
               id="deletion-token"
               type="text"
               value={token}
-              onChange={(e) => setToken(e.target.value)}
+              onChange={(e) => handleTokenChange(e.target.value)}
               placeholder="Code aus der Einreichungsbestätigung"
               className="input-field font-mono text-sm"
               autoComplete="off"
               spellCheck={false}
             />
+            <p className="mt-1.5 text-xs text-neutral-500">
+              Pro Song ein eigener Code. Nach dem Löschen ist der Code ungültig.
+            </p>
           </div>
 
           {error && <p className="alert-error">{error}</p>}
           {success && <p className="alert-success">{success}</p>}
 
-          <button type="submit" disabled={!token.trim() || isDeleting} className="btn-primary w-full">
-            {isDeleting && <Loader2 className="h-5 w-5 animate-spin" />}
-            Song endgültig entfernen
-          </button>
+          {preview && confirmedToken && token.trim() === confirmedToken && (
+            <div
+              className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4"
+              role="status"
+            >
+              <p className="text-sm font-medium text-amber-200">Dieser Song wird gelöscht:</p>
+              <p className="mt-1 text-lg font-semibold text-neutral-50">{preview.title}</p>
+              {preview.artist && (
+                <p className="text-sm text-neutral-400">{preview.artist}</p>
+              )}
+              <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+                Das kann nicht rückgängig gemacht werden. Prüfe Titel und Künstler, bevor du
+                bestätigst.
+              </p>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={!canConfirmDelete}
+                className="btn-primary mt-4 w-full"
+              >
+                {isBusy && <Loader2 className="h-5 w-5 animate-spin" />}
+                Ja, „{preview.title}“ endgültig entfernen
+              </button>
+              <button
+                type="button"
+                onClick={resetPreview}
+                disabled={isBusy}
+                className="btn-subtle mt-2 w-full"
+              >
+                Abbrechen
+              </button>
+            </div>
+          )}
+
+          {!preview && (
+            <button type="submit" disabled={!canPreview} className="btn-primary w-full">
+              {isBusy && <Loader2 className="h-5 w-5 animate-spin" />}
+              <Search className="h-5 w-5" />
+              Song anzeigen &amp; bestätigen
+            </button>
+          )}
         </form>
       </div>
     </div>

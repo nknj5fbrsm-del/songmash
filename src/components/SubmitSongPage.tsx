@@ -447,10 +447,24 @@ export function SubmitSongPage() {
               <CheckCircle className="h-4 w-4 shrink-0" />
               Song eingereicht — Lösch-Code sichern
             </p>
-            <p className="mb-3 text-xs leading-relaxed text-neutral-400">
-              Dieser Code wird nur einmal angezeigt. Mit ihm kannst du den Song später selbst
-              entfernen (Footer → Song entfernen). Ohne Code nur per Anfrage an den Betreiber.
+            <p className="mb-2 text-xs leading-relaxed text-neutral-400">
+              Dieser Code wird <strong className="font-medium text-neutral-300">nur einmal</strong>{' '}
+              angezeigt. Kopiere oder notiere ihn jetzt — bevor du den nächsten Song einreichst.
             </p>
+            <ul className="mb-3 list-inside list-disc space-y-1 text-xs leading-relaxed text-neutral-500">
+              <li>
+                <strong className="font-medium text-neutral-400">Mehrere Songs?</strong> Jeder
+                Einreichung hat einen <strong className="font-medium text-neutral-400">eigenen</strong>{' '}
+                Code. Der vorherige Code verschwindet nach dem nächsten Submit aus dieser Ansicht.
+              </li>
+              <li>
+                Später unter <strong className="font-medium text-neutral-400">Footer → Song entfernen</strong>{' '}
+                einfügen. Dort siehst du zuerst Titel &amp; Künstler und bestätigst die Löschung.
+              </li>
+              <li>
+                Nach erfolgreichem Löschen ist der Code verbraucht und ungültig.
+              </li>
+            </ul>
             <div className="flex items-center gap-2 rounded-lg bg-neutral-950/60 px-3 py-2">
               <code className="flex-1 break-all font-mono text-sm text-neutral-100">
                 {deletionToken}
