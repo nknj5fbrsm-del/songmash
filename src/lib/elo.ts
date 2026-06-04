@@ -1,4 +1,5 @@
-const K_FACTOR = 32
+export const ELO_K_FACTOR = 32
+const K_FACTOR = ELO_K_FACTOR
 
 function expectedScore(ratingA: number, ratingB: number): number {
   return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400))

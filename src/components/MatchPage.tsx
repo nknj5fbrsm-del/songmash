@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef } from 'react'
-import { Shuffle } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Info, Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
+import { EloInfoModal } from './EloInfoModal'
 import { SongCard } from './SongCard'
 import { VoteBadge } from './VoteBadge'
 
 export function MatchPage() {
   const { currentMatch, vote, userVoteCount } = useSongs()
+  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
 
@@ -29,14 +31,25 @@ export function MatchPage() {
 
   if (!currentMatch) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-lg text-neutral-400">
-          Mindestens zwei Songs nötig für ein Match.
-        </p>
-        <p className="mt-2 text-sm text-neutral-500">
-          Reiche einen Song ein, um loszulegen.
-        </p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-lg text-neutral-400">
+            Mindestens zwei Songs nötig für ein Match.
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">
+            Reiche einen Song ein, um loszulegen.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEloInfoOpen(true)}
+            className="btn-subtle mt-6"
+          >
+            <Info className="h-4 w-4" />
+            Wie funktioniert Elo?
+          </button>
+        </div>
+        <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
+      </>
     )
   }
 
@@ -49,7 +62,17 @@ export function MatchPage() {
         <p className="page-subtitle">
           Höre beide Tracks und vote für deinen Favoriten.
         </p>
+        <button
+          type="button"
+          onClick={() => setEloInfoOpen(true)}
+          className="btn-subtle mx-auto mt-4"
+        >
+          <Info className="h-4 w-4" />
+          Wie funktioniert Elo?
+        </button>
       </header>
+
+      <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
 
       <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-stretch">
         <SongCard
