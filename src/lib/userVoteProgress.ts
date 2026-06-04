@@ -1,4 +1,5 @@
 export const USER_VOTES_KEY = 'songmash_user_votes'
+export const BADGE_EMBLEM_HIDDEN_KEY = 'songmash_badge_emblem_hidden'
 
 export const BADGE_TIER_1 = 50
 export const BADGE_TIER_2 = 100
@@ -39,4 +40,21 @@ export function votesUntilNextTier(count: number): number {
 
 export function progressToFirstBadge(count: number): number {
   return Math.min(100, Math.round((count / BADGE_TIER_1) * 100))
+}
+
+/** 50/100-Emblem auf der Voting-Seite ausblenden (Schlaf-Badge bleibt sichtbar). */
+export function readBadgeEmblemHidden(): boolean {
+  try {
+    return localStorage.getItem(BADGE_EMBLEM_HIDDEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeBadgeEmblemHidden(hidden: boolean): void {
+  try {
+    localStorage.setItem(BADGE_EMBLEM_HIDDEN_KEY, hidden ? '1' : '0')
+  } catch {
+    // ignore
+  }
 }

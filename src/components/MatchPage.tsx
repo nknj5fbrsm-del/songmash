@@ -64,7 +64,7 @@ export function MatchPage() {
   if (!currentMatch) {
     return (
       <>
-        <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-lg text-neutral-400">
             Mindestens zwei Songs nötig für ein Match.
           </p>
@@ -86,7 +86,7 @@ export function MatchPage() {
 
   return (
     <div>
-      <header className="mb-8 text-center">
+      <header className="mb-6 text-center">
         <h1 className="page-title">Wer gewinnt?</h1>
         <p className="page-subtitle">
           Höre beide Tracks und vote für deinen Favoriten.

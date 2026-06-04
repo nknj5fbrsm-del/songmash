@@ -115,7 +115,28 @@ export const supabaseSongRepository = {
       .single()
 
     if (error) throw new Error(error.message)
-    return rowToSong(row)
+    const song = rowToSong(row)
+
+    const { data: activeWeek } = await supabase
+      .from('competition_weeks')
+      .select('id')
+      .eq('status', 'active')
+      .order('starts_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (activeWeek?.id) {
+      await supabase.from('week_elo_snapshots').upsert(
+        {
+          week_id: activeWeek.id,
+          song_id: song.id,
+          elo_at_start: song.eloRating,
+        },
+        { onConflict: 'week_id,song_id' },
+      )
+    }
+
+    return song
   },
 
   async updateEloRatings(

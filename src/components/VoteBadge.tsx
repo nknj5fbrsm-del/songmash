@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { BadgeSleepingIcon } from './CrossedSwordsSvg'
 import badgeTier50 from '../assets/badges/badge-tier-50.png'
 import badgeTier100 from '../assets/badges/badge-tier-100.png'
@@ -6,6 +7,8 @@ import {
   BADGE_TIER_1,
   BADGE_TIER_2,
   getBadgeTier,
+  readBadgeEmblemHidden,
+  writeBadgeEmblemHidden,
 } from '../lib/userVoteProgress'
 
 const SIZE = 96
@@ -42,6 +45,9 @@ export function VoteBadge({ count }: VoteBadgeProps) {
   const offset = CIRCUMFERENCE * (1 - progress)
   const prevCount = useRef(count)
   const [flash, setFlash] = useState(false)
+  const [emblemHidden, setEmblemHidden] = useState(() => readBadgeEmblemHidden())
+
+  const showTierEmblem = tier >= 1 && !emblemHidden
 
   useEffect(() => {
     const crossed50 = prevCount.current < BADGE_TIER_1 && count >= BADGE_TIER_1
@@ -55,16 +61,38 @@ export function VoteBadge({ count }: VoteBadgeProps) {
     }
   }, [count])
 
+  const setHidden = (hidden: boolean) => {
+    writeBadgeEmblemHidden(hidden)
+    setEmblemHidden(hidden)
+  }
+
   const progressStroke = '#a855f7'
   const progressFilter = 'drop-shadow(0 0 6px rgba(168,85,247,0.5))'
 
   const tierEmblem = tier >= 1 ? TIER_EMBLEM[tier as 1 | 2] : null
 
+  if (tier >= 1 && emblemHidden) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setHidden(false)}
+          className="btn-subtle px-3 py-2 text-xs"
+          title={progressLabel(count, tier)}
+        >
+          <Eye className="h-3.5 w-3.5" aria-hidden />
+          Emblem anzeigen
+        </button>
+        <p className="text-center text-[10px] text-neutral-600">{progressLabel(count, tier)}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center" title={progressLabel(count, tier)}>
       <div
         className={`relative ${flash ? 'scale-105 transition-transform duration-300' : ''} ${
-          tier === 2 ? 'animate-pulse' : ''
+          tier === 2 && showTierEmblem ? 'animate-pulse' : ''
         }`}
       >
         {tier === 0 ? (
@@ -119,9 +147,19 @@ export function VoteBadge({ count }: VoteBadgeProps) {
         {progressLabel(count, tier)}
       </p>
       {tier >= 1 && (
-        <p className="text-[10px] font-medium text-neutral-600">
-          {tier === 2 ? 'Duell-Meister' : 'Duell-Kämpfer'}
-        </p>
+        <>
+          <p className="text-[10px] font-medium text-neutral-600">
+            {tier === 2 ? 'Duell-Meister' : 'Duell-Kämpfer'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setHidden(true)}
+            className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-neutral-600 transition-colors hover:text-neutral-400"
+          >
+            <EyeOff className="h-3 w-3" aria-hidden />
+            Emblem ausblenden
+          </button>
+        </>
       )}
     </div>
   )

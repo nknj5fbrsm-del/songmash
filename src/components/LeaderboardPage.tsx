@@ -1,11 +1,26 @@
 import { useMemo, useRef, useState } from 'react'
 import { Headphones, Search, Trophy } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
+import {
+  useWeekCompetitionContext,
+  WeekCompetitionProvider,
+} from '../context/WeekCompetitionContext'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
+import { HallOfFame } from './HallOfFame'
+import { WeekCompetitionStrip } from './WeekCompetitionStrip'
 
 export function LeaderboardPage() {
+  return (
+    <WeekCompetitionProvider>
+      <LeaderboardPageContent />
+    </WeekCompetitionProvider>
+  )
+}
+
+function LeaderboardPageContent() {
   const { songs, voteCounts, totalVoteRounds } = useSongs()
+  const { hallOfFame } = useWeekCompetitionContext()
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
@@ -44,7 +59,7 @@ export function LeaderboardPage() {
 
   return (
     <div>
-      <header className="mb-8 text-center">
+      <header className="mb-6 text-center">
         <h1 className="page-title flex items-center justify-center gap-3">
           <Trophy className="h-8 w-8 text-lime-400" />
           Leaderboard
@@ -55,6 +70,7 @@ export function LeaderboardPage() {
         <p className="mt-2 text-sm text-neutral-500">
           Abstimmungsrunden gesamt: {totalVoteRounds}
         </p>
+        <WeekCompetitionStrip className="mt-5" />
       </header>
 
       {ranked.length === 0 ? (
@@ -121,6 +137,8 @@ export function LeaderboardPage() {
           )}
         </>
       )}
+
+      <HallOfFame weeks={hallOfFame} />
     </div>
   )
 }

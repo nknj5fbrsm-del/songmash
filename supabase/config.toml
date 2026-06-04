@@ -28,3 +28,6 @@ verify_jwt = false
 
 [functions.delete-song-by-token]
 verify_jwt = false
+
+[functions.week-cycle]
+verify_jwt = false

@@ -94,9 +94,12 @@ Die App importiert Suno-Links serverseitig in **Supabase Storage** (Function `im
 npx supabase login
 npx supabase functions deploy import-audio --project-ref cwymmgfstfkgaiatbsev
 npx supabase functions deploy delete-song-by-token --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy week-cycle --project-ref cwymmgfstfkgaiatbsev
 ```
 
 **Ohne `delete-song-by-token`** funktioniert „Song entfernen“ per Lösch-Code nicht.
+
+**Ohne `week-cycle`** gibt es keinen Song-der-Woche-Countdown und keine automatische Wochenfinalisierung.
 
 Optional (für Udio/YouTube-Auflösung und alte Suno-CDN-Links beim Voting):
 
@@ -115,7 +118,24 @@ VITE_AUDIO_PROXY_URL=https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/proxy
 
 ---
 
-## 8. App starten
+## 8. Song der Woche (Kalenderwoche Mo–So)
+
+Migration im **SQL Editor** oder via `supabase db push`:
+
+`supabase/migrations/20260602120000_song_of_the_week.sql`
+
+Legt an: `competition_weeks`, `week_elo_snapshots`, `week_winners`.
+
+**Edge Function `week-cycle`:**
+
+- finalisiert abgelaufene Wochen (Platz-1-Snapshot + Weekly MVP)
+- legt die aktuelle Berlin-Kalenderwoche an und erstellt Elo-Snapshots
+
+Die App ruft `week-cycle` beim Laden im Hintergrund auf. Zusätzlich empfohlen: **Scheduled Function** im Supabase Dashboard (z. B. Sonntag 23:59 `Europe/Berlin`, Cron `59 23 * * 0`) → POST auf `/functions/v1/week-cycle`.
+
+---
+
+## 9. App starten
 
 ```bash
 npm run dev
@@ -133,7 +153,7 @@ Ohne `.env.local` nutzt die App weiterhin **localStorage** — praktisch für re
 
 ---
 
-## Nächste Schritte (optional)
+## 10. Nächste Schritte (optional)
 
 - **Auth** aktivieren → nur eingeloggte User dürfen Songs einreichen
 - **Elo serverseitig** berechnen (Edge Function / DB Trigger)
