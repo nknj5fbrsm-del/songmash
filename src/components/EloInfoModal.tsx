@@ -52,7 +52,7 @@ export function EloInfoModal({ open, onClose }: EloInfoModalProps) {
           <div className="flex items-center gap-2">
             <Info className="h-6 w-6 shrink-0 text-lime-400" aria-hidden />
             <h2 id={titleId} className="text-xl font-bold text-neutral-50">
-              Elo-Bewertung
+              Was ist ELO
             </h2>
           </div>
           <button
