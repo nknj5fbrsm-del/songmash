@@ -4,12 +4,18 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { MOCK_SONGS } from '../data/mockSongs'
 import { calculateElo } from '../lib/elo'
-import { pickRandomMatch } from '../lib/match'
+import {
+  advancePairBans,
+  pickRandomMatch,
+  pairingOptionsFromState,
+  type BannedPair,
+} from '../lib/match'
 import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
@@ -49,6 +55,25 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
 
+  const pairingRef = useRef<{ excludeSongIds: string[]; bannedPairs: BannedPair[] }>({
+    excludeSongIds: [],
+    bannedPairs: [],
+  })
+
+  const pickNextMatch = useCallback((songList: Song[]) => {
+    return pickRandomMatch(songList, pairingOptionsFromState(pairingRef.current))
+  }, [])
+
+  const finishMatchAndPickNext = useCallback(
+    (finished: VoteMatch, songList: Song[]) => {
+      const state = pairingRef.current
+      state.bannedPairs = advancePairBans(state.bannedPairs, finished)
+      state.excludeSongIds = [finished.songA.id, finished.songB.id]
+      return pickNextMatch(songList)
+    },
+    [pickNextMatch],
+  )
+
   useEffect(() => {
     let cancelled = false
 
@@ -84,20 +109,21 @@ export function SongProvider({ children }: { children: ReactNode }) {
   }, [repository])
 
   const refreshMatch = useCallback(() => {
-    setCurrentMatch(pickRandomMatch(songs))
-  }, [songs])
+    setCurrentMatch(pickNextMatch(songs))
+  }, [songs, pickNextMatch])
 
   const vote = useCallback(
     async (result: VoteResult) => {
       if (!currentMatch) return
 
       if (result === 'skip') {
-        await repository.recordVote(currentMatch.songA.id, currentMatch.songB.id, 'skip')
+        const finished = currentMatch
+        await repository.recordVote(finished.songA.id, finished.songB.id, 'skip')
         setVoteCounts((counts) =>
-          incrementVoteCounts(counts, currentMatch.songA.id, currentMatch.songB.id),
+          incrementVoteCounts(counts, finished.songA.id, finished.songB.id),
         )
         setTotalVoteRounds((n) => n + 1)
-        setCurrentMatch(pickRandomMatch(songs))
+        setCurrentMatch(finishMatchAndPickNext(finished, songs))
         return
       }
 
@@ -122,12 +148,12 @@ export function SongProvider({ children }: { children: ReactNode }) {
         setVoteCounts((counts) => incrementVoteCounts(counts, songA.id, songB.id))
         setTotalVoteRounds((n) => n + 1)
         setUserVoteCount(incrementUserVoteCount())
-        setCurrentMatch(pickRandomMatch(updated))
+        setCurrentMatch(finishMatchAndPickNext(currentMatch, updated))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vote konnte nicht gespeichert werden.')
       }
     },
-    [currentMatch, songs, repository],
+    [currentMatch, songs, repository, finishMatchAndPickNext],
   )
 
   const submitSong = useCallback(
@@ -153,11 +179,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
       setSongs(reloaded)
       setVoteCounts(counts)
       setTotalVoteRounds(rounds)
-      setCurrentMatch(pickRandomMatch(reloaded))
+      setCurrentMatch(pickNextMatch(reloaded))
       setError(null)
       return result
     },
-    [],
+    [pickNextMatch],
   )
 
   const removeSong = useCallback(
@@ -171,14 +197,14 @@ export function SongProvider({ children }: { children: ReactNode }) {
         setSongs(updated)
         setVoteCounts(computeVoteCounts(votes))
         setTotalVoteRounds(rounds)
-        setCurrentMatch(pickRandomMatch(updated))
+        setCurrentMatch(pickNextMatch(updated))
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Song konnte nicht gelöscht werden.')
         throw err
       }
     },
-    [repository],
+    [repository, pickNextMatch],
   )
 
   const value = useMemo(
