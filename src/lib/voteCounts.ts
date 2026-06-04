@@ -19,3 +19,8 @@ export function incrementVoteCounts(
   next.set(songBId, (next.get(songBId) ?? 0) + 1)
   return next
 }
+
+/** Eine Zeile in `votes` = eine Abstimmungsrunde (A/B/Skip). */
+export function totalVoteRoundsFromCounts(counts: Map<string, number>): number {
+  return Math.floor([...counts.values()].reduce((sum, count) => sum + count, 0) / 2)
+}

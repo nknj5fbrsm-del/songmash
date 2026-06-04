@@ -19,6 +19,51 @@ type SongRow = {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** PostgREST liefert standardmäßig max. 1000 Zeilen pro Request. */
+const VOTES_PAGE_SIZE = 1000
+
+type VoteRow = {
+  id: string
+  song_a_id: string
+  song_b_id: string
+  winner: string
+  created_at: string
+}
+
+function mapVoteRow(row: VoteRow): VoteRecord {
+  return {
+    id: row.id,
+    songAId: row.song_a_id,
+    songBId: row.song_b_id,
+    winner: row.winner as VoteRecord['winner'],
+    createdAt: row.created_at,
+  }
+}
+
+async function fetchAllVoteRows(): Promise<VoteRow[]> {
+  const supabase = getSupabaseClient()
+  const rows: VoteRow[] = []
+  let offset = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('votes')
+      .select('id, song_a_id, song_b_id, winner, created_at')
+      .order('created_at', { ascending: true })
+      .range(offset, offset + VOTES_PAGE_SIZE - 1)
+
+    if (error) throw new Error(error.message)
+
+    const page = (data ?? []) as VoteRow[]
+    rows.push(...page)
+
+    if (page.length < VOTES_PAGE_SIZE) break
+    offset += VOTES_PAGE_SIZE
+  }
+
+  return rows
+}
+
 function rowToSong(row: SongRow): Song {
   return {
     id: row.id,
@@ -125,21 +170,18 @@ export const supabaseSongRepository = {
   },
 
   async getAllVotes(): Promise<VoteRecord[]> {
+    const rows = await fetchAllVoteRows()
+    return rows.map(mapVoteRow)
+  },
+
+  async getVoteRoundCount(): Promise<number> {
     const supabase = getSupabaseClient()
-    const { data, error } = await supabase
+    const { count, error } = await supabase
       .from('votes')
-      .select('id, song_a_id, song_b_id, winner, created_at')
-      .order('created_at', { ascending: true })
+      .select('*', { count: 'exact', head: true })
 
     if (error) throw new Error(error.message)
-
-    return (data ?? []).map((row) => ({
-      id: row.id,
-      songAId: row.song_a_id,
-      songBId: row.song_b_id,
-      winner: row.winner as VoteResult,
-      createdAt: row.created_at,
-    }))
+    return count ?? 0
   },
 
   async persistEloRatings(ratings: Map<string, number>): Promise<void> {

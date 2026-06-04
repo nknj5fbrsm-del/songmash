@@ -18,6 +18,7 @@ export interface SongRepository {
   ): Promise<void>
   recordVote(songAId: string, songBId: string, winner: VoteResult): Promise<void>
   getAllVotes(): Promise<VoteRecord[]>
+  getVoteRoundCount(): Promise<number>
   seedIfEmpty(seedSongs: Song[]): Promise<void>
   deleteSongAndRecalculate(songId: string): Promise<Song[]>
 }
@@ -54,6 +55,10 @@ const localAsyncRepository: SongRepository = {
 
   async getAllVotes() {
     return []
+  },
+
+  async getVoteRoundCount() {
+    return 0
   },
 
   async seedIfEmpty(seedSongs) {

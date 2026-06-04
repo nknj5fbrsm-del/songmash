@@ -109,6 +109,10 @@ export async function deleteSongByToken(token: string): Promise<{ title: string 
 
 export async function reloadSongsAfterTokenDelete() {
   const repository = getSongRepository()
-  const [songs, votes] = await Promise.all([repository.getAll(), repository.getAllVotes()])
-  return { songs, voteCounts: computeVoteCounts(votes) }
+  const [songs, votes, totalVoteRounds] = await Promise.all([
+    repository.getAll(),
+    repository.getAllVotes(),
+    repository.getVoteRoundCount(),
+  ])
+  return { songs, voteCounts: computeVoteCounts(votes), totalVoteRounds }
 }

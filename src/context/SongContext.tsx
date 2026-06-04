@@ -23,6 +23,7 @@ interface SongContextValue {
   error: string | null
   storageMode: 'supabase' | 'local'
   voteCounts: Map<string, number>
+  totalVoteRounds: number
   userVoteCount: number
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
@@ -42,6 +43,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
   const [songs, setSongs] = useState<Song[]>([])
   const [voteCounts, setVoteCounts] = useState<Map<string, number>>(() => new Map())
+  const [totalVoteRounds, setTotalVoteRounds] = useState(0)
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,11 +58,16 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
       try {
         await repository.seedIfEmpty(MOCK_SONGS)
-        const [loaded, votes] = await Promise.all([repository.getAll(), repository.getAllVotes()])
+        const [loaded, votes, rounds] = await Promise.all([
+          repository.getAll(),
+          repository.getAllVotes(),
+          repository.getVoteRoundCount(),
+        ])
         if (cancelled) return
 
         setSongs(loaded)
         setVoteCounts(computeVoteCounts(votes))
+        setTotalVoteRounds(rounds)
         setCurrentMatch(pickRandomMatch(loaded))
       } catch (err) {
         if (cancelled) return
@@ -89,6 +96,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
         setVoteCounts((counts) =>
           incrementVoteCounts(counts, currentMatch.songA.id, currentMatch.songB.id),
         )
+        setTotalVoteRounds((n) => n + 1)
         setCurrentMatch(pickRandomMatch(songs))
         return
       }
@@ -112,6 +120,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
         setSongs(updated)
         setVoteCounts((counts) => incrementVoteCounts(counts, songA.id, songB.id))
+        setTotalVoteRounds((n) => n + 1)
         setUserVoteCount(incrementUserVoteCount())
         setCurrentMatch(pickRandomMatch(updated))
       } catch (err) {
@@ -139,9 +148,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const deleteSongByToken = useCallback(
     async (token: string) => {
       const result = await deleteSongByTokenRequest(token)
-      const { songs: reloaded, voteCounts: counts } = await reloadSongsAfterTokenDelete()
+      const { songs: reloaded, voteCounts: counts, totalVoteRounds: rounds } =
+        await reloadSongsAfterTokenDelete()
       setSongs(reloaded)
       setVoteCounts(counts)
+      setTotalVoteRounds(rounds)
       setCurrentMatch(pickRandomMatch(reloaded))
       setError(null)
       return result
@@ -153,9 +164,13 @@ export function SongProvider({ children }: { children: ReactNode }) {
     async (songId: string) => {
       try {
         const updated = await repository.deleteSongAndRecalculate(songId)
-        const votes = await repository.getAllVotes()
+        const [votes, rounds] = await Promise.all([
+          repository.getAllVotes(),
+          repository.getVoteRoundCount(),
+        ])
         setSongs(updated)
         setVoteCounts(computeVoteCounts(votes))
+        setTotalVoteRounds(rounds)
         setCurrentMatch(pickRandomMatch(updated))
         setError(null)
       } catch (err) {
@@ -174,6 +189,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      totalVoteRounds,
       userVoteCount,
       vote,
       submitSong,
@@ -188,6 +204,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      totalVoteRounds,
       userVoteCount,
       vote,
       submitSong,

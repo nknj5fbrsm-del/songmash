@@ -5,14 +5,10 @@ import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 
 export function LeaderboardPage() {
-  const { songs, voteCounts } = useSongs()
+  const { songs, voteCounts, totalVoteRounds } = useSongs()
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
-  const totalVotes = useMemo(
-    () => Math.floor([...voteCounts.values()].reduce((sum, count) => sum + count, 0) / 2),
-    [voteCounts],
-  )
 
   const ranked = useMemo(
     () =>
@@ -57,7 +53,7 @@ export function LeaderboardPage() {
           Die Perlen der Community — sortiert nach Elo-Rating.
         </p>
         <p className="mt-2 text-sm text-neutral-500">
-          Abstimmungsrunden gesamt: {totalVotes}
+          Abstimmungsrunden gesamt: {totalVoteRounds}
         </p>
       </header>
 
