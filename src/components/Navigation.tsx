@@ -1,4 +1,5 @@
-import { Music2, Trophy, Upload } from 'lucide-react'
+import { Heart, Music2, Trophy, Upload } from 'lucide-react'
+import { getPaypalDonateUrl } from '../config/legal'
 
 export type Page =
   | 'match'
@@ -21,6 +22,8 @@ const links: { id: Page; label: string; icon: typeof Music2 }[] = [
 ]
 
 export function Navigation({ current, onNavigate }: NavigationProps) {
+  const donateUrl = getPaypalDonateUrl()
+
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800/80 bg-neutral-950/95 backdrop-blur-md">
       <div className="mx-auto max-w-6xl px-4 pt-5">
@@ -47,6 +50,27 @@ export function Navigation({ current, onNavigate }: NavigationProps) {
         </div>
 
         <nav className="mt-5 pb-3">
+          {donateUrl && (
+            <div className="mb-1.5 grid grid-cols-3 gap-2 px-1.5">
+              <div aria-hidden />
+              <div className="flex justify-center">
+                <a
+                  href={donateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-neutral-200"
+                >
+                  <Heart
+                    className="h-3.5 w-3.5 fill-red-500 text-red-500"
+                    aria-hidden
+                  />
+                  Spende
+                </a>
+              </div>
+              <div aria-hidden />
+            </div>
+          )}
+
           <div className="flex gap-2 rounded-2xl bg-neutral-900/60 p-1.5">
             {links.map(({ id, label, icon: Icon }) => {
               const active = current === id

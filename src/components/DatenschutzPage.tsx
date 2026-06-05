@@ -147,7 +147,36 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           </p>
         </Section>
 
-        <Section title="7. Lokale Speicherung im Browser">
+        <Section title="7. Freiwillige Spenden (PayPal)">
+          <p>
+            Wenn du über den Link „Spende“ im Kopfbereich eine Zahlung leisten möchtest, wirst du zu{' '}
+            <strong className="text-neutral-300">PayPal</strong> (PayPal (Europe) S.à r.l. et Cie,
+            S.C.A. bzw. verbundene Unternehmen) weitergeleitet. Dort werden die für die Zahlung
+            erforderlichen Daten (z. B. Zahlungsdaten, ggf. Name und E-Mail) von PayPal verarbeitet.
+          </p>
+          <p>
+            Wir erhalten von PayPal in der Regel nur Informationen, die für die Zuordnung der Zahlung
+            nötig sind (z. B. Betrag, Zeitpunkt, Status). Wir speichern diese Spendeninformationen
+            nicht dauerhaft auf unseren Servern.
+          </p>
+          <p>
+            Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (deine freiwillige Entscheidung) sowie Art. 6
+            Abs. 1 lit. f DSGVO (berechtigtes Interesse am Betrieb der Plattform).
+          </p>
+          <p>
+            Datenschutzhinweise von PayPal:{' '}
+            <a
+              href="https://www.paypal.com/de/webapps/mpp/ua/privacy-full"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lime-400/90 hover:text-lime-300"
+            >
+              paypal.com — Datenschutz
+            </a>
+          </p>
+        </Section>
+
+        <Section title="8. Lokale Speicherung im Browser">
           <p>
             <strong className="text-neutral-300">Ohne Supabase:</strong> Song-Daten können im{' '}
             <code className="text-neutral-300">localStorage</code> deines Browsers gespeichert werden
@@ -162,7 +191,7 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           <p>Es werden keine Tracking-Cookies gesetzt.</p>
         </Section>
 
-        <Section title="8. Speicherdauer und Löschung">
+        <Section title="9. Speicherdauer und Löschung">
           <p>
             Eingereichte Songs und Abstimmungen bleiben gespeichert, solange sie für den Betrieb der
             Plattform benötigt werden.
@@ -175,7 +204,7 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           </p>
         </Section>
 
-        <Section title="9. Deine Rechte">
+        <Section title="10. Deine Rechte">
           <p>Du hast gegenüber uns folgende Rechte bezüglich deiner personenbezogenen Daten:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Auskunft (Art. 15 DSGVO)</li>
@@ -191,7 +220,7 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           </p>
         </Section>
 
-        <Section title="10. Aufsichtsbehörde">
+        <Section title="11. Aufsichtsbehörde">
           <p className="whitespace-pre-line">
             Landesbeauftragter für den Datenschutz Sachsen-Anhalt
             {'\n'}

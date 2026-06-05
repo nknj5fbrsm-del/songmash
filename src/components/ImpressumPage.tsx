@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { formatAddress, legal } from '../config/legal'
+import { formatAddress, getPaypalDonateUrl, legal } from '../config/legal'
 
 interface ImpressumPageProps {
   onBack?: () => void
@@ -76,12 +76,35 @@ export function ImpressumPage({ onBack }: ImpressumPageProps) {
           </p>
         </Section>
 
+        <Section title="Freiwillige Spenden">
+          <p>
+            Über einen Link im Kopfbereich der Website kannst du SongMash{' '}
+            <strong className="text-neutral-300">freiwillig und unverbindlich</strong> unterstützen.
+            Die Zahlung erfolgt über <strong className="text-neutral-300">PayPal</strong> (
+            <a
+              href={getPaypalDonateUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lime-400/90 hover:text-lime-300"
+            >
+              Spenden-Link
+            </a>
+            ). Es handelt sich nicht um den Kauf einer Leistung; es besteht kein Anspruch auf
+            Gegenleistung. Für die Abwicklung gelten die Bedingungen von PayPal.
+          </p>
+          <p>
+            Spenden sind <strong className="text-neutral-300">keine steuerlich absetzbaren
+            Spenden</strong> im Sinne gemeinnütziger Organisationen, sofern nicht ausdrücklich
+            anders angegeben.
+          </p>
+        </Section>
+
         <Section title="Haftung für Links">
           <p>
-            Unser Angebot enthält Links zu externen Websites Dritter (z. B. Suno, Audio-Quellen),
-            auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte
-            auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der
-            jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
+            Unser Angebot enthält Links zu externen Websites Dritter (z. B. Suno, Audio-Quellen,
+            PayPal), auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese
+            fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist
+            stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
           </p>
         </Section>
 

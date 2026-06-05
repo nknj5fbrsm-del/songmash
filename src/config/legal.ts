@@ -14,7 +14,15 @@ export const legal = {
   phone: undefined as string | undefined,
   /** Verantwortlich für redaktionelle Inhalte (§ 18 Abs. 2 MStV) */
   contentResponsible: 'Nils Pocklitz',
+  /** Öffentlicher PayPal-Spendenlink (Hosted Button) */
+  paypalDonateUrl:
+    'https://www.paypal.com/donate/?hosted_button_id=JGN9EMCZQQPY4',
 } as const
+
+export function getPaypalDonateUrl(): string | undefined {
+  const fromEnv = import.meta.env.VITE_PAYPAL_DONATE_URL?.trim()
+  return fromEnv || legal.paypalDonateUrl
+}
 
 export function formatAddress(): string {
   const { street, postalCode, city, country } = legal.address

@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_MODERATOR_KEY?: string
   readonly VITE_AUDIO_RESOLVER_URL?: string
   readonly VITE_AUDIO_PROXY_URL?: string
+  readonly VITE_PAYPAL_DONATE_URL?: string
 }
 
 interface ImportMeta {
