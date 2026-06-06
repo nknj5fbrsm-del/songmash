@@ -1,5 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { Crown, Headphones, Search, TrendingUp, Trophy } from 'lucide-react'
+import {
+  LeaderboardShufflePlayer,
+  type LeaderboardShufflePlayerHandle,
+} from './LeaderboardShufflePlayer'
 import { useSongs } from '../context/SongContext'
 import { useWeekCompetitionContext } from '../context/WeekCompetitionContext'
 import { getBerlinWeekNumber } from '../lib/competitionWeek'
@@ -40,6 +44,7 @@ function LeaderboardPageContent() {
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const shuffleRef = useRef<LeaderboardShufflePlayerHandle>(null)
 
   const ranked = useMemo(
     () =>
@@ -67,15 +72,24 @@ function LeaderboardPageContent() {
     )
   }, [latestWinners])
 
+  const stopRowPlayers = () => {
+    audioRefs.current.forEach((audio) => audio.pause())
+    setExpandedId(null)
+  }
+
   const togglePlayer = (songId: string) => {
+    shuffleRef.current?.stop()
     setExpandedId((current) => (current === songId ? null : songId))
   }
 
   const pauseOthers = (songId: string) => {
+    shuffleRef.current?.stop()
     audioRefs.current.forEach((audio, id) => {
       if (id !== songId) audio.pause()
     })
   }
+
+  const shuffleSongs = useMemo(() => filtered.map(({ song }) => song), [filtered])
 
   const registerAudio = (songId: string, el: HTMLAudioElement | null) => {
     if (el) audioRefs.current.set(songId, el)
@@ -102,22 +116,29 @@ function LeaderboardPageContent() {
         <p className="text-center text-neutral-500">Noch keine Songs vorhanden.</p>
       ) : (
         <>
-          <div className="relative mx-auto mb-4 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Titel oder Artist…"
-              className="input-field !pl-10"
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <LeaderboardShufflePlayer
+              ref={shuffleRef}
+              songs={shuffleSongs}
+              onActivate={stopRowPlayers}
             />
-          </div>
 
-          {query.trim() && (
-            <p className="mb-4 text-center text-xs text-neutral-500">
-              {filtered.length} von {ranked.length} Songs
-            </p>
-          )}
+            <div className="relative w-full sm:w-52 sm:shrink-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Suchen…"
+                className="input-field !h-11 !w-full !rounded-xl !border-neutral-800 !bg-neutral-900/60 !py-0 !pl-9 !pr-12 !text-sm"
+              />
+              {query.trim() && (
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums text-neutral-500">
+                  {filtered.length}/{ranked.length}
+                </span>
+              )}
+            </div>
+          </div>
 
           {latestWinners && winnerSongIds.size > 0 && (
             <p className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-neutral-500">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Clock, Crown, Info, Music2 } from 'lucide-react'
+import { ChevronDown, Clock, Crown, Info, Music2 } from 'lucide-react'
 import { useWeekCompetitionContext } from '../context/WeekCompetitionContext'
 import type { Song } from '../types/song'
 import { WeekCompetitionInfoModal } from './WeekCompetitionInfoModal'
@@ -77,6 +77,7 @@ export function WeekCompetitionStrip({ className }: WeekCompetitionStripProps) {
     mvpCandidate,
   } = useWeekCompetitionContext()
   const [infoOpen, setInfoOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   if (!enabled || loading) return null
 
@@ -86,56 +87,74 @@ export function WeekCompetitionStrip({ className }: WeekCompetitionStripProps) {
         className={`mx-auto w-full max-w-2xl overflow-hidden rounded-xl border border-lime-400/15 bg-lime-400/[0.04] ${className ?? ''}`}
         aria-label="Song der Woche"
       >
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-b border-lime-400/10 px-3 py-2.5 text-sm">
-          <Crown className="h-4 w-4 shrink-0 text-lime-400" aria-hidden />
-          <span className="font-medium text-lime-300/90">Song der Woche</span>
-          <span className="text-lime-400/25" aria-hidden>
-            ·
-          </span>
-          <span className="text-neutral-400">KW {display.weekNumber}</span>
-          <span className="text-lime-400/25" aria-hidden>
-            ·
-          </span>
-          <span className="inline-flex items-center gap-1 text-neutral-400">
-            <Clock className="h-3.5 w-3.5 text-lime-400/70" aria-hidden />
-            {display.isEnded ? (
-              <span>Woche endet …</span>
-            ) : (
-              <span>
-                noch <span className="tabular-nums text-neutral-300">{display.countdownLabel}</span>
-              </span>
-            )}
-          </span>
+        <div
+          className={`flex items-stretch ${expanded ? 'border-b border-lime-400/10' : ''}`}
+        >
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 py-2.5 text-sm transition-colors hover:bg-lime-400/[0.06]"
+          >
+            <Crown className="h-4 w-4 shrink-0 text-lime-400" aria-hidden />
+            <span className="font-medium text-lime-300/90">Song der Woche</span>
+            <span className="text-lime-400/25" aria-hidden>
+              ·
+            </span>
+            <span className="text-neutral-400">KW {display.weekNumber}</span>
+            <span className="text-lime-400/25" aria-hidden>
+              ·
+            </span>
+            <span className="inline-flex items-center gap-1 text-neutral-400">
+              <Clock className="h-3.5 w-3.5 text-lime-400/70" aria-hidden />
+              {display.isEnded ? (
+                <span>Woche endet …</span>
+              ) : (
+                <span>
+                  noch <span className="tabular-nums text-neutral-300">{display.countdownLabel}</span>
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-neutral-500 transition-transform duration-200 ${
+                expanded ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </button>
+
           <button
             type="button"
             onClick={() => setInfoOpen(true)}
-            className="ml-0.5 inline-flex rounded-md p-0.5 text-neutral-500 transition-colors hover:text-lime-400 sm:ml-1"
+            className="inline-flex shrink-0 items-center border-l border-lime-400/10 px-3 text-neutral-500 transition-colors hover:bg-lime-400/[0.06] hover:text-lime-400"
             aria-label="Song der Woche erklären"
           >
             <Info className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr]">
-          <ContenderColumn
-            heading="Momentan Platz 1"
-            song={currentLeader}
-            emptyText="—"
-          />
+        {expanded && (
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr]">
+            <ContenderColumn
+              heading="Momentan Platz 1"
+              song={currentLeader}
+              emptyText="—"
+            />
 
-          <div
-            className="hidden w-px shrink-0 bg-neutral-800 sm:block"
-            aria-hidden
-          />
+            <div
+              className="hidden w-px shrink-0 bg-neutral-800 sm:block"
+              aria-hidden
+            />
 
-          <div className="h-px shrink-0 bg-neutral-800 sm:hidden" aria-hidden />
+            <div className="h-px shrink-0 bg-neutral-800 sm:hidden" aria-hidden />
 
-          <ContenderColumn
-            heading="Aufsteiger der Woche"
-            song={mvpCandidate?.song}
-            emptyText="min. 3 Votes"
-          />
-        </div>
+            <ContenderColumn
+              heading="Aufsteiger der Woche"
+              song={mvpCandidate?.song}
+              emptyText="min. 3 Votes"
+            />
+          </div>
+        )}
       </div>
 
       <WeekCompetitionInfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
