@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { SongProvider, useSongs } from './context/SongContext'
+import { WeekCompetitionProvider } from './context/WeekCompetitionContext'
 import { isTurnstileEnabled } from './lib/turnstileConfig'
 import { Navigation, type Page } from './components/Navigation'
 import { Footer } from './components/Footer'
@@ -30,6 +31,7 @@ function AppContent() {
   }
 
   return (
+    <WeekCompetitionProvider>
     <div className="flex min-h-screen flex-col bg-neutral-950">
       {page !== 'moderation' &&
         page !== 'impressum' &&
@@ -69,6 +71,7 @@ function AppContent() {
         onRemoveSong={() => setPage('remove-song')}
       />
     </div>
+    </WeekCompetitionProvider>
   )
 }
 
@@ -79,3 +82,4 @@ export default function App() {
     </SongProvider>
   )
 }
+

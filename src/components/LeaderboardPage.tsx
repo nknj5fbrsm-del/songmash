@@ -1,21 +1,37 @@
 import { useMemo, useRef, useState } from 'react'
-import { Headphones, Search, Trophy } from 'lucide-react'
+import { Crown, Headphones, Search, TrendingUp, Trophy } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
-import {
-  useWeekCompetitionContext,
-  WeekCompetitionProvider,
-} from '../context/WeekCompetitionContext'
+import { useWeekCompetitionContext } from '../context/WeekCompetitionContext'
+import { getBerlinWeekNumber } from '../lib/competitionWeek'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
-import { HallOfFame } from './HallOfFame'
+import type { HallOfFameWeek } from '../types/weekCompetition'
 import { WeekCompetitionStrip } from './WeekCompetitionStrip'
 
+type LatestWeekWinners = {
+  weekNumber: number
+  championId: string | null
+  mvpId: string | null
+}
+
+function getLatestFinalizedWinners(hallOfFame: HallOfFameWeek[]): LatestWeekWinners | null {
+  const latest = hallOfFame[0]
+  if (!latest) return null
+
+  const champion = latest.winners.find((w) => w.winnerType === 'leaderboard_champion')
+  const mvp = latest.winners.find((w) => w.winnerType === 'weekly_mvp')
+
+  if (!champion?.songId && !mvp?.songId) return null
+
+  return {
+    weekNumber: getBerlinWeekNumber(new Date(latest.week.startsAt)),
+    championId: champion?.songId ?? null,
+    mvpId: mvp?.songId ?? null,
+  }
+}
+
 export function LeaderboardPage() {
-  return (
-    <WeekCompetitionProvider>
-      <LeaderboardPageContent />
-    </WeekCompetitionProvider>
-  )
+  return <LeaderboardPageContent />
 }
 
 function LeaderboardPageContent() {
@@ -41,6 +57,15 @@ function LeaderboardPageContent() {
         song.title.toLowerCase().includes(term) || song.artist.toLowerCase().includes(term),
     )
   }, [ranked, query])
+
+  const latestWinners = useMemo(() => getLatestFinalizedWinners(hallOfFame), [hallOfFame])
+
+  const winnerSongIds = useMemo(() => {
+    if (!latestWinners) return new Set<string>()
+    return new Set(
+      [latestWinners.championId, latestWinners.mvpId].filter((id): id is string => Boolean(id)),
+    )
+  }, [latestWinners])
 
   const togglePlayer = (songId: string) => {
     setExpandedId((current) => (current === songId ? null : songId))
@@ -94,6 +119,19 @@ function LeaderboardPageContent() {
             </p>
           )}
 
+          {latestWinners && winnerSongIds.size > 0 && (
+            <p className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-neutral-500">
+              <span className="inline-flex items-center gap-1">
+                <Crown className="h-3 w-3 text-lime-400" aria-hidden />
+                Song der Woche (KW {latestWinners.weekNumber})
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-lime-400/80" aria-hidden />
+                Aufsteiger der Woche
+              </span>
+            </p>
+          )}
+
           {filtered.length === 0 ? (
             <p className="text-center text-neutral-500">Keine Treffer für „{query.trim()}“.</p>
           ) : (
@@ -125,6 +163,9 @@ function LeaderboardPageContent() {
                   rank={rank}
                   voteCount={voteCounts.get(song.id) ?? 0}
                   expanded={expandedId === song.id}
+                  isWeekChampion={latestWinners?.championId === song.id}
+                  isWeekMvp={latestWinners?.mvpId === song.id}
+                  weekNumber={latestWinners?.weekNumber}
                   onToggle={() => togglePlayer(song.id)}
                   onPlay={() => pauseOthers(song.id)}
                   registerAudio={registerAudio}
@@ -138,7 +179,6 @@ function LeaderboardPageContent() {
         </>
       )}
 
-      <HallOfFame weeks={hallOfFame} />
     </div>
   )
 }
@@ -148,6 +188,9 @@ function LeaderboardRow({
   rank,
   voteCount,
   expanded,
+  isWeekChampion,
+  isWeekMvp,
+  weekNumber,
   onToggle,
   onPlay,
   registerAudio,
@@ -156,10 +199,18 @@ function LeaderboardRow({
   rank: number
   voteCount: number
   expanded: boolean
+  isWeekChampion?: boolean
+  isWeekMvp?: boolean
+  weekNumber?: number
   onToggle: () => void
   onPlay: () => void
   registerAudio: (songId: string, el: HTMLAudioElement | null) => void
 }) {
+  const kwLabel = weekNumber != null ? `KW ${weekNumber}` : 'letzte Woche'
+  const isWeekWinner = isWeekChampion || isWeekMvp
+  const winnerCoverGlow =
+    'ring-2 ring-lime-300/80 shadow-[0_0_14px_rgba(190,242,100,0.5)]'
+
   return (
     <>
       <tr
@@ -182,20 +233,48 @@ function LeaderboardRow({
             {rank}
           </span>
         </td>
-        <td className="max-w-[10rem] px-2 py-3 sm:max-w-none sm:px-6 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <td className="max-w-[11rem] px-2 py-3 sm:max-w-none sm:px-6 sm:py-4">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {song.coverUrl ? (
               <img
                 src={song.coverUrl}
                 alt=""
-                className="h-8 w-8 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10"
+                className={`h-8 w-8 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10 ${
+                  isWeekWinner ? winnerCoverGlow : ''
+                }`}
               />
             ) : (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500 sm:h-10 sm:w-10">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500 sm:h-10 sm:w-10 ${
+                  isWeekWinner ? winnerCoverGlow : ''
+                }`}
+              >
                 ♪
               </div>
             )}
-            <div className="min-w-0">
+
+            {(isWeekChampion || isWeekMvp) && (
+              <div className="flex shrink-0 flex-col gap-0.5 sm:flex-row sm:gap-1">
+                {isWeekChampion && (
+                  <span title={`Song der Woche (${kwLabel})`}>
+                    <Crown
+                      className="h-3.5 w-3.5 text-lime-300 drop-shadow-[0_0_6px_rgba(190,242,100,0.7)]"
+                      aria-label={`Song der Woche ${kwLabel}`}
+                    />
+                  </span>
+                )}
+                {isWeekMvp && (
+                  <span title={`Aufsteiger der Woche (${kwLabel})`}>
+                    <TrendingUp
+                      className="h-3.5 w-3.5 text-lime-300 drop-shadow-[0_0_6px_rgba(190,242,100,0.6)]"
+                      aria-label={`Aufsteiger der Woche ${kwLabel}`}
+                    />
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1">
               <div className="truncate font-medium text-neutral-100">{song.title}</div>
               <div className="truncate text-xs text-neutral-500 sm:hidden">{song.artist}</div>
             </div>
