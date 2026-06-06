@@ -55,6 +55,7 @@ export function SongCard({ song, side, onVote, onPlay, audioRef }: SongCardProps
           ref={ref}
           src={getPlayableAudioUrl(song.audioUrl)}
           controls
+          controlsList="nodownload"
           preload="metadata"
           className="w-full"
           onPlay={onPlay}

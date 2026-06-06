@@ -332,6 +332,7 @@ function LeaderboardRow({
                 ref={(el) => registerAudio(song.id, el)}
                 src={getPlayableAudioUrl(song.audioUrl)}
                 controls
+                controlsList="nodownload"
                 autoPlay
                 preload="metadata"
                 className="w-full"

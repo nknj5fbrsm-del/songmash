@@ -369,7 +369,13 @@ export function SubmitSongPage() {
               )}
             </p>
             <div className="rounded-lg bg-neutral-800/50 p-3">
-              <audio src={previewUrl} controls preload="metadata" className="w-full" />
+              <audio
+                src={previewUrl}
+                controls
+                controlsList="nodownload"
+                preload="metadata"
+                className="w-full"
+              />
             </div>
           </div>
         )}
