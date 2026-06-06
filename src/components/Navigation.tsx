@@ -32,9 +32,14 @@ export function Navigation({ current, onNavigate }: NavigationProps) {
             <Music2 className="h-5 w-5 text-lime-400" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold tracking-tight text-neutral-50">
-              Song<span className="text-lime-400">Mash</span>
-            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-bold tracking-tight text-neutral-50">
+                Song<span className="text-lime-400">Mash</span>
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                Beta
+              </span>
+            </div>
             <span className="text-xs text-neutral-500 sm:text-sm">
               by{' '}
               <a
