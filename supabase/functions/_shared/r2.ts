@@ -65,17 +65,30 @@ export async function uploadBytesToR2(
   bytes: ArrayBuffer,
   contentType: string,
 ): Promise<string> {
-  const client = createR2Client()
-  const { bucket } = getR2Config()
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: new Uint8Array(bytes),
-      ContentType: contentType,
-      CacheControl: 'public, max-age=31536000, immutable',
-    }),
-  )
+  const { accessKeyId, secretAccessKey, bucket, endpoint } = getR2Config()
+  const aws = new AwsClient({
+    accessKeyId,
+    secretAccessKey,
+    service: 's3',
+    region: 'auto',
+  })
+
+  const url = `${endpoint}/${bucket}/${key}`
+  const res = await aws.fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+    body: bytes,
+    signal: AbortSignal.timeout(120_000),
+  })
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`R2-Upload fehlgeschlagen (${res.status}): ${key} ${body}`.trim())
+  }
+
   return publicUrlForKey(key)
 }
 
