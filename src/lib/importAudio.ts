@@ -1,3 +1,4 @@
+import { isHostedAssetUrl } from './assetUrls'
 import { isSupabaseConfigured } from './supabaseClient'
 import { needsAudioProxy } from './audioProxy'
 
@@ -7,17 +8,9 @@ function getImportAudioUrl(): string | null {
   return `${supabaseUrl.replace(/\/$/, '')}/functions/v1/import-audio`
 }
 
-function isSupabaseStorageUrl(url: string): boolean {
-  try {
-    return new URL(url).pathname.includes('/storage/v1/object/public/song-assets/')
-  } catch {
-    return false
-  }
-}
-
-/** Externe Audio-URLs (Suno CDN) für Production in Supabase Storage spiegeln. */
+/** Externe Audio-URLs (Suno CDN) für Production in R2 spiegeln. */
 export async function importAudioToStorage(sourceUrl: string): Promise<string> {
-  if (isSupabaseStorageUrl(sourceUrl)) return sourceUrl
+  if (isHostedAssetUrl(sourceUrl)) return sourceUrl
   if (!needsAudioProxy(sourceUrl)) return sourceUrl
 
   const importUrl = getImportAudioUrl()
@@ -54,7 +47,7 @@ export async function importAudioToStorage(sourceUrl: string): Promise<string> {
 }
 
 export async function prepareAudioForPlayback(audioUrl: string): Promise<string> {
-  if (isSupabaseStorageUrl(audioUrl)) return audioUrl
+  if (isHostedAssetUrl(audioUrl)) return audioUrl
   if (import.meta.env.DEV) return audioUrl
   if (!needsAudioProxy(audioUrl)) return audioUrl
   if (!isSupabaseConfigured()) return audioUrl
@@ -62,5 +55,5 @@ export async function prepareAudioForPlayback(audioUrl: string): Promise<string>
 }
 
 export function isMirroredStorageUrl(url: string): boolean {
-  return isSupabaseStorageUrl(url)
+  return isHostedAssetUrl(url)
 }

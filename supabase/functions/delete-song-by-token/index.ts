@@ -1,30 +1,34 @@
 /**
  * Löscht einen Song anhand des Klartext-Lösch-Codes (Hash-Vergleich serverseitig).
+ * R2-Purge, dann DB-Löschung vor der Antwort; Elo-Neuberechnung im Hintergrund.
  * Deploy: supabase functions deploy delete-song-by-token
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { hashDeletionToken, timingSafeEqual } from '../_shared/deletionTokenHash.ts'
-import { recalculateEloFromVoteRows } from '../_shared/elo.ts'
-
-const BUCKET = 'song-assets'
-const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`
+import { scheduleBackground } from '../_shared/backgroundTask.ts'
+import { hashDeletionToken } from '../_shared/deletionTokenHash.ts'
+import { purgeHostedAssetsForRow } from '../_shared/purgeHostedAssets.ts'
+import { recalculateAllSongElo } from '../_shared/recalculateAllElo.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function getStoragePathFromPublicUrl(url: string): string | null {
-  const idx = url.indexOf(PUBLIC_MARKER)
-  if (idx === -1) return null
-  return decodeURIComponent(url.slice(idx + PUBLIC_MARKER.length).split('?')[0])
+type SongRow = {
+  id: string
+  title: string
+  artist: string
+  audio_url: string
+  cover_url: string | null
 }
 
-function collectStoragePaths(row: { audio_url: string; cover_url: string | null }): string[] {
-  const paths = [getStoragePathFromPublicUrl(row.audio_url)]
-  if (row.cover_url) paths.push(getStoragePathFromPublicUrl(row.cover_url))
-  return paths.filter((p): p is string => Boolean(p))
+async function runEloRecalcInBackground(supabase: ReturnType<typeof createClient>): Promise<void> {
+  try {
+    await recalculateAllSongElo(supabase)
+  } catch (err) {
+    console.error('Elo recalculation failed:', err)
+  }
 }
 
 Deno.serve(async (req) => {
@@ -49,72 +53,49 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey)
     const tokenHash = await hashDeletionToken(token)
 
-    const { data: candidates, error: findError } = await supabase
+    const { data: row, error: findError } = await supabase
       .from('songs')
-      .select('id, title, artist, audio_url, cover_url, deletion_token_hash')
-      .not('deletion_token_hash', 'is', null)
+      .select('id, title, artist, audio_url, cover_url')
+      .eq('deletion_token_hash', tokenHash)
+      .maybeSingle()
 
     if (findError) return json({ error: findError.message }, 500)
-
-    const row = (candidates ?? []).find((s) =>
-      s.deletion_token_hash &&
-      timingSafeEqual(s.deletion_token_hash, tokenHash),
-    )
 
     if (!row) {
       return json({ error: 'Ungültiger Lösch-Code.' }, 404)
     }
 
+    const song = row as SongRow
+
     if (preview === true) {
-      return json({ preview: true, title: row.title, artist: row.artist })
+      return json({ preview: true, title: song.title, artist: song.artist })
     }
 
-    const storagePaths = collectStoragePaths(row)
-    if (storagePaths.length > 0) {
-      await supabase.storage.from(BUCKET).remove(storagePaths)
+    const assetSnapshot = { audio_url: song.audio_url, cover_url: song.cover_url }
+    const title = song.title
+
+    try {
+      await purgeHostedAssetsForRow(assetSnapshot)
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'Unbekannter Fehler'
+      console.error('R2/Storage purge failed:', detail)
+      return json(
+        {
+          error: `Dateien konnten nicht gelöscht werden — der Song bleibt bestehen. (${detail})`,
+        },
+        500,
+      )
     }
 
-    const { error: deleteError } = await supabase.from('songs').delete().eq('id', row.id)
+    const { error: deleteError } = await supabase.from('songs').delete().eq('id', song.id)
     if (deleteError) return json({ error: deleteError.message }, 500)
 
-    const { data: remainingSongs, error: songsError } = await supabase
-      .from('songs')
-      .select('id')
+    scheduleBackground(runEloRecalcInBackground(supabase))
 
-    if (songsError) return json({ error: songsError.message }, 500)
-
-    const votes: { song_a_id: string; song_b_id: string; winner: string; created_at: string }[] =
-      []
-    const pageSize = 1000
-    let offset = 0
-
-    while (true) {
-      const { data: page, error: votesError } = await supabase
-        .from('votes')
-        .select('song_a_id, song_b_id, winner, created_at')
-        .order('created_at', { ascending: true })
-        .range(offset, offset + pageSize - 1)
-
-      if (votesError) return json({ error: votesError.message }, 500)
-
-      const rows = page ?? []
-      votes.push(...rows)
-
-      if (rows.length < pageSize) break
-      offset += pageSize
-    }
-
-    const songIds = (remainingSongs ?? []).map((s) => s.id)
-    const ratings = recalculateEloFromVoteRows(songIds, votes)
-
-    const updates = [...ratings.entries()].map(([id, elo_rating]) =>
-      supabase.from('songs').update({ elo_rating }).eq('id', id),
-    )
-    await Promise.all(updates)
-
-    return json({ ok: true, title: row.title })
+    return json({ ok: true, title })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
+    console.error('delete-song-by-token:', message)
     return json({ error: message }, 500)
   }
 })

@@ -1,16 +1,14 @@
 /**
  * Supabase Edge Function: import-audio
  *
- * Lädt externe Audio-URLs (Suno CDN etc.) serverseitig und speichert sie in Storage.
+ * Lädt externe Audio-URLs (Suno CDN etc.) serverseitig und speichert sie in Cloudflare R2.
  * Deploy: supabase functions deploy import-audio
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { extractAudioFromPage } from '../_shared/extractAudioFromPage.ts'
 import { fetchProxiedAudio } from '../_shared/proxyAudio.ts'
+import { uploadBytesToR2 } from '../_shared/r2.ts'
 import { normalizeAudioContentType } from '../_shared/storageMime.ts'
-
-const BUCKET = 'song-assets'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -48,27 +46,10 @@ Deno.serve(async (req) => {
       return json({ error: 'Audio-Datei ist leer.' }, 422)
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!supabaseUrl || !serviceKey) {
-      return json({ error: 'Server-Konfiguration fehlt.' }, 500)
-    }
-
-    const supabase = createClient(supabaseUrl, serviceKey)
-    const path = `audio/${crypto.randomUUID()}.mp3`
-
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, {
-      contentType: normalizeAudioContentType(upstream.headers.get('content-type')),
-      cacheControl: '3600',
-      upsert: false,
-    })
-
-    if (uploadError) {
-      return json({ error: `Upload fehlgeschlagen: ${uploadError.message}` }, 500)
-    }
-
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
-    return json({ audioUrl: data.publicUrl })
+    const key = `audio/${crypto.randomUUID()}.mp3`
+    const contentType = normalizeAudioContentType(upstream.headers.get('content-type'))
+    const publicUrl = await uploadBytesToR2(key, bytes, contentType)
+    return json({ audioUrl: publicUrl })
   } catch {
     return json({ error: 'Import fehlgeschlagen.' }, 400)
   }

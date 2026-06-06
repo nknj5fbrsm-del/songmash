@@ -95,7 +95,8 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
             </li>
             <li>
               <strong className="text-neutral-300">Datei-Uploads:</strong> Audio- und
-              Cover-Dateien im Storage-Bucket „song-assets“
+              Cover-Dateien werden in <strong className="text-neutral-300">Cloudflare R2</strong>{' '}
+              gespeichert (öffentliche CDN-URL). Metadaten und URLs verbleiben in Supabase.
             </li>
             <li>
               <strong className="text-neutral-300">Edge Functions:</strong> beim Einreichen externer
@@ -119,6 +120,20 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
               Datenschutzhinweise
             </a>
             ). Die Serverregion hängt von der Projektkonfiguration ab.
+          </p>
+          <p>
+            <strong className="text-neutral-300">Cloudflare R2</strong> (Dateispeicher für Audio und
+            Cover): Anbieter Cloudflare, Inc. (
+            <a
+              href="https://www.cloudflare.com/privacypolicy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-lime-400/90 hover:text-lime-300"
+            >
+              Datenschutzhinweise
+            </a>
+            ). Beim Abspielen oder Anzeigen von Covern ruft dein Browser die Dateien direkt von
+            Cloudflare ab — ohne Cached Egress über Supabase.
           </p>
           <p>
             Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (Betrieb der Voting-Plattform) sowie Art. 6

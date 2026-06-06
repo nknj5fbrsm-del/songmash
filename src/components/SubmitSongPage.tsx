@@ -188,6 +188,7 @@ export function SubmitSongPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
     setError('')
 
     if (!title.trim() || !artist.trim()) {

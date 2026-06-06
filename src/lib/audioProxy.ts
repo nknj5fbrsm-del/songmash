@@ -1,3 +1,5 @@
+import { isHostedAssetUrl } from './assetUrls'
+
 const PROXY_HOSTS = ['suno.ai', 'suno.com', 'udio.com', 'audiocdn.com']
 
 export function needsAudioProxy(url: string): boolean {
@@ -17,19 +19,11 @@ function getProxyBase(): string | null {
 }
 
 export function getPlayableAudioUrl(url: string): string {
-  if (isSupabaseStorageUrl(url)) return url
+  if (isHostedAssetUrl(url)) return url
   if (!needsAudioProxy(url)) return url
 
   const base = getProxyBase()
   if (!base) return url
 
   return `${base}?url=${encodeURIComponent(url)}`
-}
-
-function isSupabaseStorageUrl(url: string): boolean {
-  try {
-    return new URL(url).pathname.includes('/storage/v1/object/public/song-assets/')
-  } catch {
-    return false
-  }
 }

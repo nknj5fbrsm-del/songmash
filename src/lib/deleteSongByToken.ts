@@ -33,10 +33,21 @@ async function callDeletionTokenApi(
       Authorization: `Bearer ${anonKey}`,
       apikey: anonKey,
     },
+    signal: AbortSignal.timeout(options.preview ? 30_000 : 90_000),
     body: JSON.stringify({ token, preview: options.preview }),
   })
 
-  const body = (await res.json()) as ApiBody
+  let body: ApiBody
+  try {
+    body = (await res.json()) as ApiBody
+  } catch {
+    throw new Error(
+      options.preview
+        ? 'Code konnte nicht geprüft werden (Server-Antwort ungültig).'
+        : 'Löschen fehlgeschlagen (Server-Antwort ungültig).',
+    )
+  }
+
   if (!res.ok) {
     throw new Error(body.error ?? (options.preview ? 'Code konnte nicht geprüft werden.' : 'Löschen fehlgeschlagen.'))
   }

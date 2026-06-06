@@ -1,7 +1,7 @@
 import type { Song, VoteRecord, VoteResult } from '../types/song'
 import { applyEloRatings, recalculateEloRatings } from './recalculateElo'
 import { getSupabaseClient } from './supabaseClient'
-import { collectStoragePaths, STORAGE_BUCKET } from './storagePaths'
+import { purgeHostedAssets } from './purgeHostedAssets'
 
 type SongRow = {
   id: string
@@ -111,11 +111,17 @@ export const supabaseSongRepository = {
     const { data: row, error } = await supabase
       .from('songs')
       .insert({ ...songToInsert(data), deletion_token_hash: deletionTokenHash })
-      .select('*')
+      .select('*, deletion_token_hash')
       .single()
 
     if (error) throw new Error(error.message)
-    const song = rowToSong(row)
+
+    const storedHash = (row as { deletion_token_hash?: string | null }).deletion_token_hash
+    if (!storedHash || storedHash !== deletionTokenHash) {
+      throw new Error('Lösch-Code konnte nicht zuverlässig gespeichert werden. Bitte erneut einreichen.')
+    }
+
+    const song = rowToSong(row as SongRow)
 
     const { data: activeWeek } = await supabase
       .from('competition_weeks')
@@ -227,15 +233,14 @@ export const supabaseSongRepository = {
     if (fetchError) throw new Error(fetchError.message)
 
     const song = rowToSong(row as SongRow)
-    const storagePaths = collectStoragePaths(song)
+    const moderatorKey = import.meta.env.VITE_MODERATOR_KEY as string | undefined
 
-    if (storagePaths.length > 0) {
-      const { error: storageError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove(storagePaths)
-      // Storage-Fehler nicht blockieren (Datei evtl. schon weg oder externer Link)
-      if (storageError) {
-        console.warn('Storage cleanup:', storageError.message)
+    if (moderatorKey) {
+      try {
+        await purgeHostedAssets(song.audioUrl, song.coverUrl, moderatorKey)
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : 'Unbekannter Fehler'
+        throw new Error(`Dateien konnten nicht gelöscht werden — Song bleibt bestehen. (${detail})`)
       }
     }
 

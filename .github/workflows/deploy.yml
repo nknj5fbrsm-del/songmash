@@ -25,6 +25,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_MODERATOR_KEY: songmash-admin-2026
+          VITE_R2_PUBLIC_URL: https://pub-a6d3efc7833c4556b272d9c2695e3d17.r2.dev
           VITE_AUDIO_RESOLVER_URL: https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/resolve-audio
 
       - name: Deploy dist to gh-pages branch

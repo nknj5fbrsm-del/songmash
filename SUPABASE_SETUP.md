@@ -85,21 +85,72 @@ Elo wird danach aus allen verbleibenden Votes neu berechnet.
 Im **SQL Editor** (Production) ausführen:  
 `supabase/migrations/20260531150000_deletion_token.sql`
 
-## 7. Edge Functions deployen (für Suno-Links in Production)
+## 7. Cloudflare R2 (Audio & Cover)
+
+Neue Uploads und Suno-Imports landen in **Cloudflare R2** statt Supabase Storage — das spart **Cached Egress** bei Supabase.
+
+### 7.1 Edge Secrets (Supabase Dashboard → Edge Functions → Secrets)
+
+| Secret | Beschreibung |
+|--------|--------------|
+| `R2_ACCOUNT_ID` | Cloudflare Account-ID |
+| `R2_BUCKET_NAME` | z. B. `songmash-audio-und-cover` |
+| `R2_PUBLIC_BASE_URL` | öffentliche R2-Dev-URL (ohne trailing slash) |
+| `R2_S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
+| `R2_ACCESS_KEY_ID` | S3-kompatibler Access Key (vom R2 API-Token) |
+| `R2_SECRET_ACCESS_KEY` | S3-kompatibles Secret |
+| `MODERATOR_KEY` | gleicher Wert wie `VITE_MODERATOR_KEY` (für Moderation-Asset-Löschung) |
+
+### 7.2 Client / CI
+
+In `.env.local` und GitHub Actions:
+
+```env
+VITE_R2_PUBLIC_URL=https://pub-a6d3efc7833c4556b272d9c2695e3d17.r2.dev
+```
+
+### 7.3 R2 CORS (Cloudflare Dashboard)
+
+Erlaubte Origins: `https://nknj5fbrsm-del.github.io`, `http://localhost:5173`  
+Methoden: `GET`, `HEAD`, `PUT` — Header: `Content-Type`
+
+---
+
+## 8. Edge Functions deployen (Suno, Lösch-Code, R2)
 
 Suno-Audio kann im Browser nicht direkt von GitHub Pages abgespielt werden.  
-Die App importiert Suno-Links serverseitig in **Supabase Storage** (Function `import-audio`).
+Die App importiert Suno-Links serverseitig in **R2** (Function `import-audio`).  
+Browser-Uploads nutzen `r2-presign` (Presigned PUT direkt nach R2).
 
 ```bash
 npx supabase login
-npx supabase functions deploy import-audio --project-ref cwymmgfstfkgaiatbsev
-npx supabase functions deploy delete-song-by-token --project-ref cwymmgfstfkgaiatbsev
-npx supabase functions deploy week-cycle --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy r2-presign import-audio delete-song-by-token purge-song-assets week-cycle --project-ref cwymmgfstfkgaiatbsev
 ```
+
+**Ohne `r2-presign`** schlagen Datei-Uploads in Production fehl.
 
 **Ohne `delete-song-by-token`** funktioniert „Song entfernen“ per Lösch-Code nicht.
 
+**Ohne `purge-song-assets`** löscht die Moderation keine R2-Dateien (DB-Eintrag wird trotzdem entfernt).
+
 **Ohne `week-cycle`** gibt es keinen Song-der-Woche-Countdown und keine automatische Wochenfinalisierung.
+
+### Phase 2: Bestehende Supabase-URLs nach R2 migrieren
+
+```bash
+npx supabase functions deploy migrate-assets-to-r2 --project-ref cwymmgfstfkgaiatbsev
+```
+
+Dry-Run (keine Änderungen):
+
+```bash
+curl -X POST 'https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/migrate-assets-to-r2' \
+  -H 'Authorization: Bearer DEIN_ANON_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"dryRun":true,"limit":10,"moderatorKey":"DEIN_MODERATOR_KEY"}'
+```
+
+Echte Migration: `"dryRun":false` — danach alte Dateien im Supabase-Bucket `song-assets` manuell prüfen und leeren.
 
 Optional (für Udio/YouTube-Auflösung und alte Suno-CDN-Links beim Voting):
 
@@ -118,7 +169,7 @@ VITE_AUDIO_PROXY_URL=https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/proxy
 
 ---
 
-## 8. Song der Woche (Kalenderwoche Mo–So)
+## 9. Song der Woche (Kalenderwoche Mo–So)
 
 Migration im **SQL Editor** oder via `supabase db push`:
 
@@ -135,7 +186,7 @@ Die App ruft `week-cycle` beim Laden im Hintergrund auf. Zusätzlich empfohlen: 
 
 ---
 
-## 9. App starten
+## 10. App starten
 
 ```bash
 npm run dev

@@ -1,6 +1,5 @@
-import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient'
-
-const BUCKET = 'song-assets'
+import { isSupabaseConfigured } from './supabaseClient'
+import { shouldUseR2Upload, uploadToR2 } from './r2Upload'
 
 const AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/mp3']
 const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -134,24 +133,15 @@ export async function uploadAsset(file: File, folder: 'audio' | 'covers'): Promi
     return URL.createObjectURL(file)
   }
 
-  const supabase = getSupabaseClient()
-  const path = `${folder}/${crypto.randomUUID()}.${fileExtension(file)}`
-
+  const extension = fileExtension(file)
   const contentType =
     folder === 'audio' ? normalizeAudioContentType(file.type || 'audio/mpeg') : file.type
 
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType,
-  })
-
-  if (error) {
-    throw new Error(`Upload fehlgeschlagen: ${error.message}`)
+  if (shouldUseR2Upload()) {
+    return uploadToR2(file, folder, extension, contentType)
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
-  return data.publicUrl
+  throw new Error('R2-Upload ist nicht konfiguriert (VITE_R2_PUBLIC_URL fehlt).')
 }
 
 export async function resolveCoverUrl(coverFile: File | null): Promise<string | undefined> {
