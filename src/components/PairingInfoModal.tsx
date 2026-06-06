@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { GitCompare, X } from 'lucide-react'
 import { PAIR_BAN_ROUNDS } from '../lib/match'
+import { PROVISIONAL_VOTE_THRESHOLD } from '../lib/provisionalFairness'
 
 interface PairingInfoModalProps {
   open: boolean
@@ -93,6 +94,18 @@ export function PairingInfoModal({ open, onClose }: PairingInfoModalProps) {
                 gesperrt
               </li>
             </ul>
+          </section>
+
+          <section>
+            <h3 className="mb-2 font-semibold text-neutral-100">Chancen für neue Songs</h3>
+            <p className="text-neutral-400">
+              Songs mit weniger als{' '}
+              <strong className="font-medium text-neutral-300">
+                {PROVISIONAL_VOTE_THRESHOLD} Match-Teilnahmen
+              </strong>{' '}
+              werden bei der Zufallsauswahl etwas häufiger gezogen, bis genug Vergleiche
+              vorliegen.
+            </p>
           </section>
 
           <p className="text-neutral-500">

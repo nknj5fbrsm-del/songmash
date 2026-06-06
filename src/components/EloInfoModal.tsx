@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef } from 'react'
 import { Info, X } from 'lucide-react'
 import { calculateElo, ELO_K_FACTOR } from '../lib/elo'
+import {
+  ELO_K_FACTOR_PROVISIONAL,
+  PROVISIONAL_VOTE_THRESHOLD,
+} from '../lib/provisionalFairness'
 import { DEFAULT_ELO } from '../lib/recalculateElo'
 
 const example = calculateElo(1600, 1400, 'A')
@@ -96,6 +100,11 @@ export function EloInfoModal({ open, onClose }: EloInfoModalProps) {
             </p>
             <p className="mt-2 text-neutral-500">
               Ergebnis = 1 für den Gewinner, 0 für den Verlierer. Werte werden gerundet.
+            </p>
+            <p className="mt-2 text-neutral-500">
+              Songs mit weniger als {PROVISIONAL_VOTE_THRESHOLD} Match-Teilnahmen nutzen
+              vorübergehend einen höheren Faktor ({ELO_K_FACTOR_PROVISIONAL} statt {ELO_K_FACTOR}),
+              damit sich neue Einreichungen schneller einpendeln.
             </p>
           </section>
 

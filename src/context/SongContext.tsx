@@ -60,16 +60,19 @@ export function SongProvider({ children }: { children: ReactNode }) {
     bannedPairs: [],
   })
 
-  const pickNextMatch = useCallback((songList: Song[]) => {
-    return pickRandomMatch(songList, pairingOptionsFromState(pairingRef.current))
+  const pickNextMatch = useCallback((songList: Song[], counts: Map<string, number>) => {
+    return pickRandomMatch(
+      songList,
+      pairingOptionsFromState(pairingRef.current, counts),
+    )
   }, [])
 
   const finishMatchAndPickNext = useCallback(
-    (finished: VoteMatch, songList: Song[]) => {
+    (finished: VoteMatch, songList: Song[], counts: Map<string, number>) => {
       const state = pairingRef.current
       state.bannedPairs = advancePairBans(state.bannedPairs, finished)
       state.excludeSongIds = [finished.songA.id, finished.songB.id]
-      return pickNextMatch(songList)
+      return pickNextMatch(songList, counts)
     },
     [pickNextMatch],
   )
@@ -90,10 +93,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
         ])
         if (cancelled) return
 
+        const counts = computeVoteCounts(votes)
         setSongs(loaded)
-        setVoteCounts(computeVoteCounts(votes))
+        setVoteCounts(counts)
         setTotalVoteRounds(rounds)
-        setCurrentMatch(pickRandomMatch(loaded))
+        setCurrentMatch(pickRandomMatch(loaded, { voteCounts: counts }))
       } catch (err) {
         if (cancelled) return
         setError(err instanceof Error ? err.message : 'Songs konnten nicht geladen werden.')
@@ -109,8 +113,8 @@ export function SongProvider({ children }: { children: ReactNode }) {
   }, [repository])
 
   const refreshMatch = useCallback(() => {
-    setCurrentMatch(pickNextMatch(songs))
-  }, [songs, pickNextMatch])
+    setCurrentMatch(pickNextMatch(songs, voteCounts))
+  }, [songs, voteCounts, pickNextMatch])
 
   const vote = useCallback(
     async (result: VoteResult) => {
@@ -119,11 +123,14 @@ export function SongProvider({ children }: { children: ReactNode }) {
       if (result === 'skip') {
         const finished = currentMatch
         await repository.recordVote(finished.songA.id, finished.songB.id, 'skip')
-        setVoteCounts((counts) =>
-          incrementVoteCounts(counts, finished.songA.id, finished.songB.id),
+        const nextCounts = incrementVoteCounts(
+          voteCounts,
+          finished.songA.id,
+          finished.songB.id,
         )
+        setVoteCounts(nextCounts)
         setTotalVoteRounds((n) => n + 1)
-        setCurrentMatch(finishMatchAndPickNext(finished, songs))
+        setCurrentMatch(finishMatchAndPickNext(finished, songs, nextCounts))
         return
       }
 
@@ -132,6 +139,10 @@ export function SongProvider({ children }: { children: ReactNode }) {
         songA.eloRating,
         songB.eloRating,
         result,
+        {
+          voteCountA: voteCounts.get(songA.id) ?? 0,
+          voteCountB: voteCounts.get(songB.id) ?? 0,
+        },
       )
 
       try {
@@ -144,16 +155,17 @@ export function SongProvider({ children }: { children: ReactNode }) {
           return song
         })
 
+        const nextCounts = incrementVoteCounts(voteCounts, songA.id, songB.id)
         setSongs(updated)
-        setVoteCounts((counts) => incrementVoteCounts(counts, songA.id, songB.id))
+        setVoteCounts(nextCounts)
         setTotalVoteRounds((n) => n + 1)
         setUserVoteCount(incrementUserVoteCount())
-        setCurrentMatch(finishMatchAndPickNext(currentMatch, updated))
+        setCurrentMatch(finishMatchAndPickNext(currentMatch, updated, nextCounts))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vote konnte nicht gespeichert werden.')
       }
     },
-    [currentMatch, songs, repository, finishMatchAndPickNext],
+    [currentMatch, songs, voteCounts, repository, finishMatchAndPickNext],
   )
 
   const submitSong = useCallback(
@@ -179,7 +191,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       setSongs(reloaded)
       setVoteCounts(counts)
       setTotalVoteRounds(rounds)
-      setCurrentMatch(pickNextMatch(reloaded))
+      setCurrentMatch(pickNextMatch(reloaded, counts))
       setError(null)
       return result
     },
@@ -194,10 +206,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
           repository.getAllVotes(),
           repository.getVoteRoundCount(),
         ])
+        const counts = computeVoteCounts(votes)
         setSongs(updated)
-        setVoteCounts(computeVoteCounts(votes))
+        setVoteCounts(counts)
         setTotalVoteRounds(rounds)
-        setCurrentMatch(pickNextMatch(updated))
+        setCurrentMatch(pickNextMatch(updated, counts))
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Song konnte nicht gelöscht werden.')
