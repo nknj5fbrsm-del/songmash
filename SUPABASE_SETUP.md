@@ -204,7 +204,36 @@ Ohne `.env.local` nutzt die App weiterhin **localStorage** — praktisch für re
 
 ---
 
-## 10. Nächste Schritte (optional)
+## 11. Cloudflare Turnstile (Spam-Schutz beim Einreichen)
+
+**Lokal / GitHub Pages (öffentlich):**
+
+```env
+VITE_TURNSTILE_SITE_KEY=dein-site-key
+```
+
+In GitHub → **Settings → Secrets → Actions** denselben Wert als `VITE_TURNSTILE_SITE_KEY` hinterlegen.
+
+**Supabase Edge Function Secret:**
+
+| Name | Wert |
+|------|------|
+| `TURNSTILE_SECRET_KEY` | Secret Key aus dem Turnstile-Dashboard |
+
+**Deploy (einmalig nach Änderungen):**
+
+```bash
+npx supabase functions deploy turnstile-session --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy submit-song --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy r2-presign --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy import-audio --project-ref cwymmgfstfkgaiatbsev
+```
+
+Ohne `VITE_TURNSTILE_SITE_KEY` bleibt die Checkbox ausgeblendet (nur für lokales Dev ohne Turnstile).
+
+---
+
+## 12. Nächste Schritte (optional)
 
 - **Auth** aktivieren → nur eingeloggte User dürfen Songs einreichen
 - **Elo serverseitig** berechnen (Edge Function / DB Trigger)

@@ -1,6 +1,7 @@
 import { isHostedAssetUrl } from './assetUrls'
 import { isSupabaseConfigured } from './supabaseClient'
 import { needsAudioProxy } from './audioProxy'
+import { submissionSessionHeaders } from './submissionSession'
 
 function getImportAudioUrl(): string | null {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
@@ -27,7 +28,7 @@ export async function importAudioToStorage(sourceUrl: string): Promise<string> {
 
   const response = await fetch(importUrl, {
     method: 'POST',
-    headers,
+    headers: { ...headers, ...submissionSessionHeaders() },
     body: JSON.stringify({ url: sourceUrl }),
   })
 

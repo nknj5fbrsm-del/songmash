@@ -12,10 +12,13 @@ import {
 } from 'lucide-react'
 import { createDeletionToken } from '../lib/deletionToken'
 import { useSongs } from '../context/SongContext'
+import { isHostedAssetUrl } from '../lib/assetUrls'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
+import { importAudioToStorage } from '../lib/importAudio'
 import { resolveAudioUrl, type AudioSource } from '../lib/resolveAudioUrl'
+import { clearSubmissionSession, openSubmissionSession } from '../lib/submissionSession'
 import { testAudioPlayback } from '../lib/testAudio'
-import { prepareAudioForPlayback } from '../lib/importAudio'
+import { isTurnstileEnabled } from '../lib/turnstileConfig'
 import {
   MAX_DESCRIPTION_LENGTH,
   MAX_TECH_TAGS_LENGTH,
@@ -26,6 +29,7 @@ import {
   validateAudioFile,
 } from '../lib/uploadAsset'
 import { DropZone } from './DropZone'
+import { TurnstileWidget } from './TurnstileWidget'
 
 type Tab = 'file' | 'link'
 type TestStatus = 'idle' | 'resolving' | 'testing' | 'ok' | 'error'
@@ -64,6 +68,13 @@ export function SubmitSongPage() {
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
   const [coverError, setCoverError] = useState('')
   const [isPreparingCover, setIsPreparingCover] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null)
+    clearSubmissionSession()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -176,9 +187,8 @@ export function SubmitSongPage() {
     setTestStatus('testing')
 
     try {
-      const readyUrl = await prepareAudioForPlayback(result.audioUrl)
-      setResolvedUrl(readyUrl)
-      await testAudioPlayback(readyUrl)
+      setResolvedUrl(result.audioUrl)
+      await testAudioPlayback(getPlayableAudioUrl(result.audioUrl))
       setTestStatus('ok')
     } catch (err) {
       setTestStatus('error')
@@ -205,16 +215,28 @@ export function SubmitSongPage() {
       return
     }
 
+    if (isTurnstileEnabled() && !turnstileToken) {
+      setError('Bitte zuerst die Sicherheitsprüfung bestätigen.')
+      return
+    }
+
     const techStackTags = parseTechTagsInput(tagsInput)
 
     setIsSubmitting(true)
 
     try {
+      if (isTurnstileEnabled() && turnstileToken) {
+        await openSubmissionSession(turnstileToken)
+      }
+
       let audioUrl: string
       if (tab === 'file' && audioFile) {
         audioUrl = await resolveAudioFromFile(audioFile)
       } else if (resolvedUrl) {
         audioUrl = resolvedUrl
+        if (!isHostedAssetUrl(audioUrl)) {
+          audioUrl = await importAudioToStorage(sourceUrl ?? audioUrl)
+        }
       } else {
         setError('Keine Audio-Quelle gefunden.')
         return
@@ -238,14 +260,21 @@ export function SubmitSongPage() {
 
       resetForm()
       setDeletionToken(token)
+      setTurnstileToken(null)
+      setTurnstileWidgetKey((k) => k + 1)
+      clearSubmissionSession()
     } catch (err) {
+      clearSubmissionSession()
+      setTurnstileToken(null)
+      setTurnstileWidgetKey((k) => k + 1)
       setError(err instanceof Error ? err.message : 'Song konnte nicht eingereicht werden.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const canSubmit = testStatus === 'ok' && !isSubmitting
+  const turnstileOk = !isTurnstileEnabled() || Boolean(turnstileToken)
+  const canSubmit = testStatus === 'ok' && turnstileOk && !isSubmitting
   const previewUrl =
     tab === 'file' ? audioPreviewUrl : resolvedUrl ? getPlayableAudioUrl(resolvedUrl) : null
 
@@ -496,6 +525,14 @@ export function SubmitSongPage() {
               Hinweis schließen
             </button>
           </div>
+        )}
+
+        {isTurnstileEnabled() && (
+          <TurnstileWidget
+            key={turnstileWidgetKey}
+            onToken={setTurnstileToken}
+            onExpire={handleTurnstileExpire}
+          />
         )}
 
         <button

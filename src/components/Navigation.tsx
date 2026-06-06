@@ -1,5 +1,7 @@
 import { Heart, Music2, Trophy, Upload } from 'lucide-react'
 import { getPaypalDonateUrl } from '../config/legal'
+import { isTurnstileEnabled } from '../lib/turnstileConfig'
+import { preloadTurnstileScript } from '../lib/turnstileLoader'
 
 export type Page =
   | 'match'
@@ -84,6 +86,20 @@ export function Navigation({ current, onNavigate }: NavigationProps) {
                   key={id}
                   type="button"
                   onClick={() => onNavigate(id)}
+                  onMouseEnter={
+                    id === 'submit' && isTurnstileEnabled()
+                      ? () => {
+                          preloadTurnstileScript().catch(() => {})
+                        }
+                      : undefined
+                  }
+                  onFocus={
+                    id === 'submit' && isTurnstileEnabled()
+                      ? () => {
+                          preloadTurnstileScript().catch(() => {})
+                        }
+                      : undefined
+                  }
                   className={active ? 'nav-tab nav-tab-active' : 'nav-tab'}
                 >
                   <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />

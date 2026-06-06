@@ -8,11 +8,16 @@
 import { extractAudioFromPage } from '../_shared/extractAudioFromPage.ts'
 import { fetchProxiedAudio } from '../_shared/proxyAudio.ts'
 import { uploadBytesToR2 } from '../_shared/r2.ts'
+import { requireSubmissionSession, verifySubmissionSession } from '../_shared/submissionSession.ts'
 import { normalizeAudioContentType } from '../_shared/storageMime.ts'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-submission-session',
 }
+
+const MAX_AUDIO_BYTES = 15 * 1024 * 1024
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,6 +26,14 @@ Deno.serve(async (req) => {
 
   if (req.method !== 'POST') {
     return json({ error: 'Method not allowed' }, 405)
+  }
+
+  const turnstileSecret = Deno.env.get('TURNSTILE_SECRET_KEY')?.trim()
+  if (turnstileSecret) {
+    const session = requireSubmissionSession(req)
+    if (!session || !(await verifySubmissionSession(session, turnstileSecret))) {
+      return json({ error: 'Sicherheits-Session ungültig oder abgelaufen.' }, 401)
+    }
   }
 
   try {
@@ -44,6 +57,9 @@ Deno.serve(async (req) => {
     const bytes = await upstream.arrayBuffer()
     if (bytes.byteLength === 0) {
       return json({ error: 'Audio-Datei ist leer.' }, 422)
+    }
+    if (bytes.byteLength > MAX_AUDIO_BYTES) {
+      return json({ error: 'Audio-Datei ist zu groß (max. 15 MB).' }, 422)
     }
 
     const key = `audio/${crypto.randomUUID()}.mp3`

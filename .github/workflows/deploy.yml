@@ -27,6 +27,7 @@ jobs:
           VITE_MODERATOR_KEY: songmash-admin-2026
           VITE_R2_PUBLIC_URL: https://pub-a6d3efc7833c4556b272d9c2695e3d17.r2.dev
           VITE_AUDIO_RESOLVER_URL: https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/resolve-audio
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Deploy dist to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

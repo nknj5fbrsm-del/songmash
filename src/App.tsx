@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { SongProvider, useSongs } from './context/SongContext'
+import { isTurnstileEnabled } from './lib/turnstileConfig'
 import { Navigation, type Page } from './components/Navigation'
 import { Footer } from './components/Footer'
 import { MatchPage } from './components/MatchPage'
@@ -41,7 +42,20 @@ function AppContent() {
 
         {page === 'match' && <MatchPage />}
         {page === 'leaderboard' && <LeaderboardPage />}
-        {page === 'submit' && <SubmitSongPage />}
+        {isTurnstileEnabled() ? (
+          <div
+            className={
+              page !== 'submit'
+                ? 'pointer-events-none fixed -left-[10000px] top-0 w-full max-w-2xl opacity-0'
+                : undefined
+            }
+            aria-hidden={page !== 'submit'}
+          >
+            <SubmitSongPage />
+          </div>
+        ) : (
+          page === 'submit' && <SubmitSongPage />
+        )}
         {page === 'moderation' && <ModerationPage onBack={() => setPage('match')} />}
         {page === 'impressum' && <ImpressumPage onBack={() => setPage('match')} />}
         {page === 'datenschutz' && <DatenschutzPage onBack={() => setPage('match')} />}

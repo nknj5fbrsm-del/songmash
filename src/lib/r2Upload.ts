@@ -1,4 +1,5 @@
 import { getR2PublicBaseUrl, isR2Configured } from './assetConfig'
+import { submissionSessionHeaders } from './submissionSession'
 import { isSupabaseConfigured } from './supabaseClient'
 
 function getPresignUrl(): string | null {
@@ -30,8 +31,13 @@ export async function uploadToR2(
 
   const presignRes = await fetch(presignUrl, {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ folder, extension, contentType }),
+    headers: { ...authHeaders(), ...submissionSessionHeaders() },
+    body: JSON.stringify({
+      folder,
+      extension,
+      contentType,
+      contentLength: file.size,
+    }),
   })
 
   const presignData = (await presignRes.json()) as {

@@ -1,7 +1,9 @@
 import type { Song, VoteRecord, VoteResult } from '../types/song'
 import { applyEloRatings, recalculateEloRatings } from './recalculateElo'
+import { submitSongViaApi } from './submitSongApi'
 import { getSupabaseClient } from './supabaseClient'
 import { purgeHostedAssets } from './purgeHostedAssets'
+import { isTurnstileEnabled } from './turnstileConfig'
 
 type SongRow = {
   id: string
@@ -107,6 +109,10 @@ export const supabaseSongRepository = {
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
     deletionTokenHash: string,
   ): Promise<Song> {
+    if (isTurnstileEnabled()) {
+      return submitSongViaApi(data, deletionTokenHash)
+    }
+
     const supabase = getSupabaseClient()
     const { data: row, error } = await supabase
       .from('songs')
