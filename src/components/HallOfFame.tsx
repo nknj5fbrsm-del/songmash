@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
-import { Crown, Music2, TrendingUp } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Crown, Music2, Pause, Play, TrendingUp } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
+import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { HallOfFameWeek, WeekWinner } from '../types/weekCompetition'
+import type { Song } from '../types/song'
 import { getBerlinWeekNumber } from '../lib/competitionWeek'
 
 function formatWeekRange(startsAt: string, endsAt: string): string {
@@ -24,15 +26,27 @@ function WinnerCard({
   label,
   icon: Icon,
   coverUrl,
-  variant,
+  song,
+  playKey,
+  isPlaying,
+  onTogglePlay,
+  registerAudio,
+  onPlaybackEnd,
 }: {
   winner: WeekWinner
   label: string
   icon: typeof Crown
   coverUrl?: string
-  variant: 'champion' | 'mvp'
+  song?: Song
+  playKey: string
+  isPlaying: boolean
+  onTogglePlay: (key: string, audio: HTMLAudioElement) => void
+  registerAudio: (key: string, el: HTMLAudioElement | null) => void
+  onPlaybackEnd: (key: string) => void
 }) {
-  const isChampion = variant === 'champion'
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const isChampion = winner.winnerType === 'leaderboard_champion'
+  const canPlay = Boolean(song?.audioUrl)
   const statLabel =
     winner.winnerType === 'weekly_mvp' && winner.eloDelta != null
       ? `+${winner.eloDelta} Elo diese Woche`
@@ -81,8 +95,33 @@ function WinnerCard({
             <Music2 className="h-10 w-10 text-neutral-600" aria-hidden />
           </div>
         )}
+
+        {canPlay && (
+          <button
+            type="button"
+            onClick={() => {
+              const audio = audioRef.current
+              if (audio) onTogglePlay(playKey, audio)
+            }}
+            className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/20 transition-colors hover:bg-black/35"
+            aria-label={
+              isPlaying
+                ? `${winner.songTitle} pausieren`
+                : `${winner.songTitle} abspielen`
+            }
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white/75 ring-1 ring-white/25 backdrop-blur-[2px] transition-colors hover:bg-black/45 hover:text-white/90">
+              {isPlaying ? (
+                <Pause className="h-5 w-5" aria-hidden />
+              ) : (
+                <Play className="ml-0.5 h-5 w-5" aria-hidden />
+              )}
+            </span>
+          </button>
+        )}
+
         <span
-          className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full border border-lime-400/40 bg-neutral-950 shadow-lg shadow-lime-400/25"
+          className="pointer-events-none absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full border border-lime-400/40 bg-neutral-950 shadow-lg shadow-lime-400/25"
           aria-hidden
         >
           {isChampion ? (
@@ -91,6 +130,19 @@ function WinnerCard({
             <TrendingUp className="h-5 w-5 text-lime-400" />
           )}
         </span>
+
+        {canPlay && (
+          <audio
+            ref={(el) => {
+              audioRef.current = el
+              registerAudio(playKey, el)
+            }}
+            src={getPlayableAudioUrl(song!.audioUrl)}
+            preload="metadata"
+            className="hidden"
+            onEnded={() => onPlaybackEnd(playKey)}
+          />
+        )}
       </div>
 
       <h3 className="max-w-full truncate text-lg font-bold tracking-tight text-neutral-50 sm:text-xl">
@@ -116,10 +168,42 @@ interface HallOfFameListProps {
 
 export function HallOfFameList({ weeks }: HallOfFameListProps) {
   const { songs } = useSongs()
+  const songById = useMemo(() => new Map(songs.map((s) => [s.id, s] as const)), [songs])
   const coverById = useMemo(
     () => new Map(songs.map((s) => [s.id, s.coverUrl] as const)),
     [songs],
   )
+
+  const [playingKey, setPlayingKey] = useState<string | null>(null)
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+
+  const registerAudio = (key: string, el: HTMLAudioElement | null) => {
+    if (el) audioRefs.current.set(key, el)
+    else audioRefs.current.delete(key)
+  }
+
+  const togglePlay = async (key: string, audio: HTMLAudioElement) => {
+    if (playingKey === key && !audio.paused) {
+      audio.pause()
+      setPlayingKey(null)
+      return
+    }
+
+    audioRefs.current.forEach((other, otherKey) => {
+      if (otherKey !== key) other.pause()
+    })
+
+    try {
+      await audio.play()
+      setPlayingKey(key)
+    } catch {
+      setPlayingKey(null)
+    }
+  }
+
+  const handlePlaybackEnd = (key: string) => {
+    setPlayingKey((current) => (current === key ? null : current))
+  }
 
   if (weeks.length === 0) {
     return (
@@ -157,7 +241,12 @@ export function HallOfFameList({ weeks }: HallOfFameListProps) {
                   label="Song der Woche"
                   icon={Crown}
                   coverUrl={champion.songId ? coverById.get(champion.songId) : undefined}
-                  variant="champion"
+                  song={champion.songId ? songById.get(champion.songId) : undefined}
+                  playKey={`${week.id}-leaderboard_champion`}
+                  isPlaying={playingKey === `${week.id}-leaderboard_champion`}
+                  onTogglePlay={togglePlay}
+                  registerAudio={registerAudio}
+                  onPlaybackEnd={handlePlaybackEnd}
                 />
               ) : (
                 <p className="flex items-center justify-center py-8 text-sm text-neutral-600">—</p>
@@ -169,7 +258,12 @@ export function HallOfFameList({ weeks }: HallOfFameListProps) {
                   label="Aufsteiger der Woche"
                   icon={TrendingUp}
                   coverUrl={mvp.songId ? coverById.get(mvp.songId) : undefined}
-                  variant="mvp"
+                  song={mvp.songId ? songById.get(mvp.songId) : undefined}
+                  playKey={`${week.id}-weekly_mvp`}
+                  isPlaying={playingKey === `${week.id}-weekly_mvp`}
+                  onTogglePlay={togglePlay}
+                  registerAudio={registerAudio}
+                  onPlaybackEnd={handlePlaybackEnd}
                 />
               ) : (
                 <p className="flex items-center justify-center py-8 text-sm text-neutral-600">—</p>
