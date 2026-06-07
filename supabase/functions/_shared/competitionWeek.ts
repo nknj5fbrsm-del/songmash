@@ -1,7 +1,7 @@
 /** Kalenderwoche Montag 00:00 – Sonntag 23:59:59.999 (Europe/Berlin). */
 
 export const COMPETITION_TIMEZONE = 'Europe/Berlin'
-export const MIN_WEEK_VOTES_FOR_MVP = 3
+export const MIN_WEEK_VOTES_FOR_MVP = 5
 
 type BerlinParts = {
   year: number

@@ -46,23 +46,47 @@ export function HallOfFameModal({ open, onClose, weeks }: HallOfFameModalProps) 
   const closeRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const confettiCanvasRef = useRef<HTMLCanvasElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
 
-    closeRef.current?.focus()
+    closeRef.current?.focus({ preventScroll: true })
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', onKeyDown)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+
+    const scrollY = window.scrollY
+    const { style } = document.body
+    const prev = {
+      position: style.position,
+      top: style.top,
+      left: style.left,
+      right: style.right,
+      overflow: style.overflow,
+      width: style.width,
+    }
+    style.position = 'fixed'
+    style.top = `-${scrollY}px`
+    style.left = '0'
+    style.right = '0'
+    style.width = '100%'
+    style.overflow = 'hidden'
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = prevOverflow
+      style.position = prev.position
+      style.top = prev.top
+      style.left = prev.left
+      style.right = prev.right
+      style.overflow = prev.overflow
+      style.width = prev.width
+      window.scrollTo(0, scrollY)
     }
-  }, [open, onClose])
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -95,7 +119,7 @@ export function HallOfFameModal({ open, onClose, weeks }: HallOfFameModalProps) 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4"
       role="presentation"
       onClick={onClose}
     >
@@ -106,7 +130,7 @@ export function HallOfFameModal({ open, onClose, weeks }: HallOfFameModalProps) 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card relative z-10 my-auto max-h-[min(90vh,820px)] w-full max-w-2xl overflow-hidden shadow-2xl shadow-black/50"
+        className="relative z-10 flex max-h-[min(92dvh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-neutral-800 bg-neutral-900/80 shadow-2xl shadow-black/50 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <canvas
@@ -115,25 +139,25 @@ export function HallOfFameModal({ open, onClose, weeks }: HallOfFameModalProps) 
           aria-hidden
         />
 
-        <div className="relative z-10 max-h-[min(90vh,820px)] overflow-y-auto">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Crown className="h-6 w-6 shrink-0 text-lime-400" aria-hidden />
-              <h2 id={titleId} className="text-xl font-bold text-neutral-50">
-                Hall of Fame
-              </h2>
-            </div>
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={onClose}
-              className="btn-secondary shrink-0 px-3 py-2"
-              aria-label="Schließen"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        <div className="relative z-30 flex shrink-0 items-start justify-between gap-4 border-b border-neutral-800/80 bg-neutral-900/95 px-5 py-4 backdrop-blur-sm sm:px-6">
+          <div className="flex items-center gap-2">
+            <Crown className="h-6 w-6 shrink-0 text-lime-400" aria-hidden />
+            <h2 id={titleId} className="text-xl font-bold text-neutral-50">
+              Hall of Fame
+            </h2>
           </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="btn-secondary shrink-0 px-3 py-2"
+            aria-label="Schließen"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-5 sm:px-6">
           <p className="mb-5 text-sm leading-relaxed text-neutral-400">
             Die gekürten Songs vergangener Wochen — verdient gefeiert.
           </p>

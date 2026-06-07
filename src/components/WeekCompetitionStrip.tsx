@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, Clock, Crown, Info, Music2 } from 'lucide-react'
 import { useWeekCompetitionContext } from '../context/WeekCompetitionContext'
 import type { Song } from '../types/song'
+import { MIN_WEEK_VOTES_FOR_MVP } from '../lib/competitionWeek'
 import { WeekCompetitionInfoModal } from './WeekCompetitionInfoModal'
 
 function CoverThumb({ song }: { song: Song | null | undefined }) {
@@ -151,7 +152,7 @@ export function WeekCompetitionStrip({ className }: WeekCompetitionStripProps) {
             <ContenderColumn
               heading="Aufsteiger der Woche"
               song={mvpCandidate?.song}
-              emptyText="min. 3 Votes"
+              emptyText={`min. ${MIN_WEEK_VOTES_FOR_MVP} Votes`}
             />
           </div>
         )}

@@ -93,8 +93,9 @@ export function WeekCompetitionInfoModal({ open, onClose }: WeekCompetitionInfoM
               Aufsteiger der Woche
             </h3>
             <p className="text-sm leading-relaxed text-neutral-400">
-              Der Song mit dem größten <strong className="text-neutral-300">Elo-Zuwachs</strong>{' '}
-              seit Montag — mindestens {MIN_WEEK_VOTES_FOR_MVP} Votes in dieser Woche nötig.
+              Der Song mit dem größten <strong className="text-neutral-300">Rang-Sprung</strong>{' '}
+              im Leaderboard seit Montag — mindestens {MIN_WEEK_VOTES_FOR_MVP} Votes in dieser Woche
+              nötig.
             </p>
           </section>
         </div>

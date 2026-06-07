@@ -1,7 +1,7 @@
 /** Kalenderwoche Montag 00:00 – Sonntag 23:59:59.999 (Europe/Berlin). */
 
 export const COMPETITION_TIMEZONE = 'Europe/Berlin'
-export const MIN_WEEK_VOTES_FOR_MVP = 3
+export const MIN_WEEK_VOTES_FOR_MVP = 5
 
 type BerlinParts = {
   year: number
@@ -95,6 +95,29 @@ export function berlinLocalToUtc(
   }
 
   return new Date(t)
+}
+
+/** Erste Woche (Montag 00:00 Berlin), ab der elo_delta beim Aufsteiger den Rang-Sprung speichert. */
+const MVP_RANK_JUMP_WEEK_START = berlinLocalToUtc({
+  year: 2026,
+  month: 6,
+  day: 8,
+  hour: 0,
+  minute: 0,
+  second: 0,
+  ms: 0,
+})
+
+export function isMvpRankJumpWeek(weekStartsAt: string | Date): boolean {
+  const start = typeof weekStartsAt === 'string' ? new Date(weekStartsAt) : weekStartsAt
+  return start.getTime() >= MVP_RANK_JUMP_WEEK_START.getTime()
+}
+
+export function formatMvpStatLabel(eloDelta: number, weekStartsAt: string): string {
+  if (isMvpRankJumpWeek(weekStartsAt)) {
+    return `↑${eloDelta} ${eloDelta === 1 ? 'Platz' : 'Plätze'}`
+  }
+  return `+${eloDelta} Elo diese Woche`
 }
 
 function berlinNoonUtc(year: number, month: number, day: number): Date {

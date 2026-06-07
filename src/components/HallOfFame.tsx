@@ -4,7 +4,7 @@ import { useSongs } from '../context/SongContext'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { HallOfFameWeek, WeekWinner } from '../types/weekCompetition'
 import type { Song } from '../types/song'
-import { getBerlinWeekNumber } from '../lib/competitionWeek'
+import { formatMvpStatLabel, getBerlinWeekNumber } from '../lib/competitionWeek'
 
 function formatWeekRange(startsAt: string, endsAt: string): string {
   const start = new Date(startsAt)
@@ -32,6 +32,7 @@ function WinnerCard({
   onTogglePlay,
   registerAudio,
   onPlaybackEnd,
+  weekStartsAt,
 }: {
   winner: WeekWinner
   label: string
@@ -43,13 +44,14 @@ function WinnerCard({
   onTogglePlay: (key: string, audio: HTMLAudioElement) => void
   registerAudio: (key: string, el: HTMLAudioElement | null) => void
   onPlaybackEnd: (key: string) => void
+  weekStartsAt: string
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const isChampion = winner.winnerType === 'leaderboard_champion'
   const canPlay = Boolean(song?.audioUrl)
   const statLabel =
-    winner.winnerType === 'weekly_mvp' && winner.eloDelta != null
-      ? `+${winner.eloDelta} Elo diese Woche`
+    winner.winnerType === 'weekly_mvp' && winner.eloDelta != null && winner.eloDelta > 0
+      ? formatMvpStatLabel(winner.eloDelta, weekStartsAt)
       : winner.finalElo != null
         ? `${winner.finalElo} Elo`
         : null
@@ -247,6 +249,7 @@ export function HallOfFameList({ weeks }: HallOfFameListProps) {
                   onTogglePlay={togglePlay}
                   registerAudio={registerAudio}
                   onPlaybackEnd={handlePlaybackEnd}
+                  weekStartsAt={week.startsAt}
                 />
               ) : (
                 <p className="flex items-center justify-center py-8 text-sm text-neutral-600">—</p>
@@ -264,6 +267,7 @@ export function HallOfFameList({ weeks }: HallOfFameListProps) {
                   onTogglePlay={togglePlay}
                   registerAudio={registerAudio}
                   onPlaybackEnd={handlePlaybackEnd}
+                  weekStartsAt={week.startsAt}
                 />
               ) : (
                 <p className="flex items-center justify-center py-8 text-sm text-neutral-600">—</p>
