@@ -1,6 +1,18 @@
+import type { CastVoteResult } from './castVoteApi'
 import type { Song, VoteRecord, VoteResult } from '../types/song'
+
+export type CastVoteParams = {
+  songAId: string
+  songBId: string
+  winner: VoteResult
+  ratingA: number
+  ratingB: number
+  voteCountA: number
+  voteCountB: number
+}
 import { isSupabaseConfigured } from './supabaseClient'
 import { setDeletionHash } from './localDeletionHashes'
+import { calculateElo } from './elo'
 import { localSongRepository } from './storage'
 import { supabaseSongRepository } from './supabaseStorage'
 
@@ -16,7 +28,7 @@ export interface SongRepository {
     songBId: string,
     newRatingB: number,
   ): Promise<void>
-  recordVote(songAId: string, songBId: string, winner: VoteResult): Promise<void>
+  castVote(params: CastVoteParams): Promise<CastVoteResult>
   getAllVotes(): Promise<VoteRecord[]>
   getVoteRoundCount(): Promise<number>
   seedIfEmpty(seedSongs: Song[]): Promise<void>
@@ -49,8 +61,25 @@ const localAsyncRepository: SongRepository = {
     localSongRepository.saveAll(songs)
   },
 
-  async recordVote() {
-    // Vote history only persisted in Supabase
+  async castVote({
+    songAId,
+    songBId,
+    winner,
+    ratingA,
+    ratingB,
+    voteCountA,
+    voteCountB,
+  }: CastVoteParams): Promise<CastVoteResult> {
+    if (winner === 'skip') {
+      return { newRatingA: ratingA, newRatingB: ratingB }
+    }
+
+    const { newRatingA, newRatingB } = calculateElo(ratingA, ratingB, winner, {
+      voteCountA,
+      voteCountB,
+    })
+    await this.updateEloRatings(songAId, newRatingA, songBId, newRatingB)
+    return { newRatingA, newRatingB }
   },
 
   async getAllVotes() {

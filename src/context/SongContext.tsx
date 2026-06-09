@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { MOCK_SONGS } from '../data/mockSongs'
-import { calculateElo } from '../lib/elo'
+import { CastVoteError } from '../lib/castVoteApi'
 import {
   advancePairBans,
   pickRandomMatch,
@@ -19,6 +19,7 @@ import {
 import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
+import { VOTE_LIMITS } from '../lib/voteLimits'
 import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
 import {
   applyVoteToWinLoss,
@@ -44,6 +45,7 @@ interface SongContextValue {
   winLossBySongId: Map<string, WinLossStats>
   totalVoteRounds: number
   userVoteCount: number
+  voteCooldownUntil: number
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
@@ -70,6 +72,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
+  const [voteCooldownUntil, setVoteCooldownUntil] = useState(0)
 
   const pairingRef = useRef<{ excludeSongIds: string[]; bannedPairs: BannedPair[] }>({
     excludeSongIds: [],
@@ -136,35 +139,22 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const vote = useCallback(
     async (result: VoteResult) => {
       if (!currentMatch) return
-
-      if (result === 'skip') {
-        const finished = currentMatch
-        await repository.recordVote(finished.songA.id, finished.songB.id, 'skip')
-        const nextCounts = incrementVoteCounts(
-          voteCounts,
-          finished.songA.id,
-          finished.songB.id,
-        )
-        setVoteCounts(nextCounts)
-        setTotalVoteRounds((n) => n + 1)
-        setCurrentMatch(finishMatchAndPickNext(finished, songs, nextCounts))
-        return
-      }
+      if (Date.now() < voteCooldownUntil) return
 
       const { songA, songB } = currentMatch
-      const { newRatingA, newRatingB } = calculateElo(
-        songA.eloRating,
-        songB.eloRating,
-        result,
-        {
-          voteCountA: voteCounts.get(songA.id) ?? 0,
-          voteCountB: voteCounts.get(songB.id) ?? 0,
-        },
-      )
+      const voteCountA = voteCounts.get(songA.id) ?? 0
+      const voteCountB = voteCounts.get(songB.id) ?? 0
 
       try {
-        await repository.updateEloRatings(songA.id, newRatingA, songB.id, newRatingB)
-        await repository.recordVote(songA.id, songB.id, result)
+        const { newRatingA, newRatingB } = await repository.castVote({
+          songAId: songA.id,
+          songBId: songB.id,
+          winner: result,
+          ratingA: songA.eloRating,
+          ratingB: songB.eloRating,
+          voteCountA,
+          voteCountB,
+        })
 
         const updated = songs.map((song) => {
           if (song.id === songA.id) return { ...song, eloRating: newRatingA }
@@ -175,15 +165,33 @@ export function SongProvider({ children }: { children: ReactNode }) {
         const nextCounts = incrementVoteCounts(voteCounts, songA.id, songB.id)
         setSongs(updated)
         setVoteCounts(nextCounts)
-        setWinLossBySongId((prev) => applyVoteToWinLoss(prev, songA.id, songB.id, result))
+        if (result !== 'skip') {
+          setWinLossBySongId((prev) => applyVoteToWinLoss(prev, songA.id, songB.id, result))
+        }
         setTotalVoteRounds((n) => n + 1)
-        setUserVoteCount(incrementUserVoteCount())
+        if (result !== 'skip') {
+          setUserVoteCount(incrementUserVoteCount())
+        }
+        setVoteCooldownUntil(Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000)
+        setError(null)
         setCurrentMatch(finishMatchAndPickNext(currentMatch, updated, nextCounts))
       } catch (err) {
+        if (err instanceof CastVoteError) {
+          setVoteCooldownUntil(Date.now() + err.retryAfterSec * 1000)
+          setError(err.message)
+          return
+        }
         setError(err instanceof Error ? err.message : 'Vote konnte nicht gespeichert werden.')
       }
     },
-    [currentMatch, songs, voteCounts, repository, finishMatchAndPickNext],
+    [
+      currentMatch,
+      songs,
+      voteCounts,
+      voteCooldownUntil,
+      repository,
+      finishMatchAndPickNext,
+    ],
   )
 
   const submitSong = useCallback(
@@ -251,6 +259,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       winLossBySongId,
       totalVoteRounds,
       userVoteCount,
+      voteCooldownUntil,
       vote,
       submitSong,
       deleteSongByToken,
@@ -267,6 +276,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       winLossBySongId,
       totalVoteRounds,
       userVoteCount,
+      voteCooldownUntil,
       vote,
       submitSong,
       deleteSongByToken,

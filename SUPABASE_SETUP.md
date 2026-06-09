@@ -186,6 +186,27 @@ Die App ruft `week-cycle` beim Laden im Hintergrund auf. Zusätzlich empfohlen: 
 
 ---
 
+## 9b. Vote-Schutz (`cast-vote`)
+
+Migration im **SQL Editor** (oder `supabase db push`):
+
+`supabase/migrations/20260608140000_vote_rate_limits.sql`
+
+- Tabelle `vote_rate_events` für Rate-Limits (IP + anonyme `voter_id`)
+- Entfernt direktes `INSERT` auf `votes` vom Client
+
+**Edge Function deployen:**
+
+```bash
+npx supabase functions deploy cast-vote --project-ref cwymmgfstfkgaiatbsev
+```
+
+Limits (serverseitig): 3 s Abstand, 6/min, 80/h, 200/Tag; Skips 15/h, 40/Tag; nach 3 Skips in Folge 30 s Pause.
+
+Ohne Migration **und** deployte Function funktionieren Votes in Production nicht.
+
+---
+
 ## 10. App starten
 
 ```bash

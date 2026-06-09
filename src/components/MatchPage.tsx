@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { GitCompare, Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
 import { PairingInfoModal } from './PairingInfoModal'
@@ -22,9 +22,26 @@ function MatchInfoButton({
   )
 }
 
+function subscribeCooldownTick(onStoreChange: () => void) {
+  const id = window.setInterval(onStoreChange, 250)
+  return () => window.clearInterval(id)
+}
+
+function useCooldownActive(until: number): boolean {
+  return useSyncExternalStore(
+    subscribeCooldownTick,
+    () => Date.now() < until,
+    () => false,
+  )
+}
+
 export function MatchPage() {
-  const { currentMatch, vote, userVoteCount } = useSongs()
+  const { currentMatch, vote, userVoteCount, voteCooldownUntil, error } = useSongs()
   const [pairingInfoOpen, setPairingInfoOpen] = useState(false)
+  const voteCooldownActive = useCooldownActive(voteCooldownUntil)
+  const cooldownSec = voteCooldownActive
+    ? Math.max(1, Math.ceil((voteCooldownUntil - Date.now()) / 1000))
+    : 0
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
 
@@ -83,6 +100,12 @@ export function MatchPage() {
 
       <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
 
+      {error && (
+        <p className="alert-error mx-auto mb-4 max-w-lg text-center text-sm" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-stretch">
         <SongCard
           key={songA.id}
@@ -91,6 +114,7 @@ export function MatchPage() {
           audioRef={audioRefA}
           onPlay={() => pauseOther('A')}
           onVote={() => vote('A')}
+          voteDisabled={voteCooldownActive}
         />
 
         <div className="flex w-full flex-col items-center justify-center gap-4 py-2 lg:w-44 lg:shrink-0 lg:self-center">
@@ -98,10 +122,16 @@ export function MatchPage() {
           <button
             type="button"
             onClick={() => vote('skip')}
-            className="btn-subtle w-full max-w-xs lg:max-w-none"
+            disabled={voteCooldownActive}
+            className="btn-subtle w-full max-w-xs disabled:cursor-not-allowed disabled:opacity-50 lg:max-w-none"
+            title={
+              voteCooldownActive
+                ? `Kurz warten (${cooldownSec}s)`
+                : 'Überspringen ohne Elo-Änderung'
+            }
           >
             <Shuffle className="h-4 w-4" />
-            Skip / Unentschieden
+            {voteCooldownActive ? `Pause (${cooldownSec}s)` : 'Skip / Unentschieden'}
           </button>
         </div>
 
@@ -112,6 +142,7 @@ export function MatchPage() {
           audioRef={audioRefB}
           onPlay={() => pauseOther('B')}
           onVote={() => vote('B')}
+          voteDisabled={voteCooldownActive}
         />
       </div>
     </div>

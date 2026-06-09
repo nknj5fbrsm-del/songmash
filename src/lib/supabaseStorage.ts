@@ -1,4 +1,6 @@
-import type { Song, VoteRecord, VoteResult } from '../types/song'
+import { castVoteViaApi, type CastVoteResult } from './castVoteApi'
+import type { CastVoteParams } from './repository'
+import type { Song, VoteRecord } from '../types/song'
 import { applyEloRatings, recalculateEloRatings } from './recalculateElo'
 import { submitSongViaApi } from './submitSongApi'
 import { getSupabaseClient } from './supabaseClient'
@@ -168,15 +170,8 @@ export const supabaseSongRepository = {
     if (updateB.error) throw new Error(updateB.error.message)
   },
 
-  async recordVote(songAId: string, songBId: string, winner: VoteResult): Promise<void> {
-    const supabase = getSupabaseClient()
-    const { error } = await supabase.from('votes').insert({
-      song_a_id: songAId,
-      song_b_id: songBId,
-      winner,
-    })
-
-    if (error) throw new Error(error.message)
+  async castVote({ songAId, songBId, winner }: CastVoteParams): Promise<CastVoteResult> {
+    return castVoteViaApi(songAId, songBId, winner)
   },
 
   async seedIfEmpty(seedSongs: Song[]): Promise<void> {

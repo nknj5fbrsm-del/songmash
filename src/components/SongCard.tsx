@@ -8,10 +8,11 @@ interface SongCardProps {
   side: 'A' | 'B'
   onVote: () => void
   onPlay: () => void
+  voteDisabled?: boolean
   audioRef?: React.RefObject<HTMLAudioElement | null>
 }
 
-export function SongCard({ song, side, onVote, onPlay, audioRef }: SongCardProps) {
+export function SongCard({ song, side, onVote, onPlay, voteDisabled, audioRef }: SongCardProps) {
   const internalRef = useRef<HTMLAudioElement>(null)
   const ref = audioRef ?? internalRef
 
@@ -63,7 +64,12 @@ export function SongCard({ song, side, onVote, onPlay, audioRef }: SongCardProps
       </div>
 
       <div className="mt-auto">
-        <button type="button" onClick={onVote} className="btn-primary w-full">
+        <button
+          type="button"
+          onClick={onVote}
+          disabled={voteDisabled}
+          className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <ThumbsUp className="h-5 w-5" />
           Vote
         </button>
