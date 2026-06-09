@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Crown, Headphones, Search, TrendingUp, Trophy } from 'lucide-react'
+import { Crown, Headphones, Info, Search, TrendingUp, Trophy } from 'lucide-react'
 import {
   LeaderboardShufflePlayer,
   type LeaderboardShufflePlayerHandle,
@@ -10,7 +10,14 @@ import { getBerlinWeekNumber } from '../lib/competitionWeek'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 import type { HallOfFameWeek } from '../types/weekCompetition'
+import { EloInfoModal } from './EloInfoModal'
 import { WeekCompetitionStrip } from './WeekCompetitionStrip'
+import {
+  formatScorePercent,
+  formatWinLossTooltip,
+  getWinLossStats,
+  type WinLossStats,
+} from '../lib/winLossScore'
 
 type LatestWeekWinners = {
   weekNumber: number
@@ -39,9 +46,10 @@ export function LeaderboardPage() {
 }
 
 function LeaderboardPageContent() {
-  const { songs, voteCounts, totalVoteRounds } = useSongs()
+  const { songs, voteCounts, winLossBySongId, totalVoteRounds } = useSongs()
   const { hallOfFame } = useWeekCompetitionContext()
   const [query, setQuery] = useState('')
+  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
   const shuffleRef = useRef<LeaderboardShufflePlayerHandle>(null)
@@ -106,6 +114,14 @@ function LeaderboardPageContent() {
         <p className="page-subtitle">
           Die Perlen der Community — sortiert nach Elo-Rating.
         </p>
+        <button
+          type="button"
+          onClick={() => setEloInfoOpen(true)}
+          className="mt-2 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+        >
+          <Info className="h-4 w-4 shrink-0 text-lime-400/80" aria-hidden />
+          Was bedeuten Elo &amp; Score?
+        </button>
         <p className="mt-2 text-sm text-neutral-500">
           Abstimmungsrunden gesamt: {totalVoteRounds}
         </p>
@@ -172,6 +188,9 @@ function LeaderboardPageContent() {
                   Votes
                 </th>
                 <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
+                  Score
+                </th>
+                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
                   Elo
                 </th>
               </tr>
@@ -183,6 +202,7 @@ function LeaderboardPageContent() {
                   song={song}
                   rank={rank}
                   voteCount={voteCounts.get(song.id) ?? 0}
+                  winLoss={getWinLossStats(winLossBySongId, song.id)}
                   expanded={expandedId === song.id}
                   isWeekChampion={latestWinners?.championId === song.id}
                   isWeekMvp={latestWinners?.mvpId === song.id}
@@ -200,6 +220,7 @@ function LeaderboardPageContent() {
         </>
       )}
 
+      <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
     </div>
   )
 }
@@ -208,6 +229,7 @@ function LeaderboardRow({
   song,
   rank,
   voteCount,
+  winLoss,
   expanded,
   isWeekChampion,
   isWeekMvp,
@@ -219,6 +241,7 @@ function LeaderboardRow({
   song: Song
   rank: number
   voteCount: number
+  winLoss: WinLossStats
   expanded: boolean
   isWeekChampion?: boolean
   isWeekMvp?: boolean
@@ -320,13 +343,19 @@ function LeaderboardRow({
         <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm text-neutral-300 sm:px-6 sm:py-4 sm:text-base">
           {voteCount}
         </td>
+        <td
+          className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm text-neutral-200 sm:px-6 sm:py-4 sm:text-base"
+          title={formatWinLossTooltip(winLoss.wins, winLoss.losses)}
+        >
+          {formatScorePercent(winLoss.score)}
+        </td>
         <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm font-semibold text-lime-400 sm:px-6 sm:py-4 sm:text-base">
           {song.eloRating}
         </td>
       </tr>
       {expanded && (
         <tr className="border-b border-neutral-800/60 bg-neutral-800/10">
-          <td colSpan={6} className="px-2 py-3 sm:px-6 sm:py-4">
+          <td colSpan={7} className="px-2 py-3 sm:px-6 sm:py-4">
             <div className="mx-auto max-w-xl rounded-xl bg-neutral-800/50 p-3">
               <audio
                 ref={(el) => registerAudio(song.id, el)}

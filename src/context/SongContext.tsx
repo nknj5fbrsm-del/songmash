@@ -20,7 +20,19 @@ import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
 import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
-import type { Song, VoteMatch, VoteResult } from '../types/song'
+import {
+  applyVoteToWinLoss,
+  computeWinLossBySongId,
+  type WinLossStats,
+} from '../lib/winLossScore'
+import type { Song, VoteMatch, VoteRecord, VoteResult } from '../types/song'
+
+function deriveVoteState(votes: VoteRecord[]) {
+  return {
+    voteCounts: computeVoteCounts(votes),
+    winLossBySongId: computeWinLossBySongId(votes),
+  }
+}
 
 interface SongContextValue {
   songs: Song[]
@@ -29,6 +41,7 @@ interface SongContextValue {
   error: string | null
   storageMode: 'supabase' | 'local'
   voteCounts: Map<string, number>
+  winLossBySongId: Map<string, WinLossStats>
   totalVoteRounds: number
   userVoteCount: number
   vote: (result: VoteResult) => Promise<void>
@@ -49,6 +62,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
   const [songs, setSongs] = useState<Song[]>([])
   const [voteCounts, setVoteCounts] = useState<Map<string, number>>(() => new Map())
+  const [winLossBySongId, setWinLossBySongId] = useState<Map<string, WinLossStats>>(
+    () => new Map(),
+  )
   const [totalVoteRounds, setTotalVoteRounds] = useState(0)
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -93,9 +109,10 @@ export function SongProvider({ children }: { children: ReactNode }) {
         ])
         if (cancelled) return
 
-        const counts = computeVoteCounts(votes)
+        const { voteCounts: counts, winLossBySongId: winLoss } = deriveVoteState(votes)
         setSongs(loaded)
         setVoteCounts(counts)
+        setWinLossBySongId(winLoss)
         setTotalVoteRounds(rounds)
         setCurrentMatch(pickRandomMatch(loaded, { voteCounts: counts }))
       } catch (err) {
@@ -158,6 +175,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
         const nextCounts = incrementVoteCounts(voteCounts, songA.id, songB.id)
         setSongs(updated)
         setVoteCounts(nextCounts)
+        setWinLossBySongId((prev) => applyVoteToWinLoss(prev, songA.id, songB.id, result))
         setTotalVoteRounds((n) => n + 1)
         setUserVoteCount(incrementUserVoteCount())
         setCurrentMatch(finishMatchAndPickNext(currentMatch, updated, nextCounts))
@@ -186,10 +204,11 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const deleteSongByToken = useCallback(
     async (token: string) => {
       const result = await deleteSongByTokenRequest(token)
-      const { songs: reloaded, voteCounts: counts, totalVoteRounds: rounds } =
+      const { songs: reloaded, voteCounts: counts, winLossBySongId: winLoss, totalVoteRounds: rounds } =
         await reloadSongsAfterTokenDelete()
       setSongs(reloaded)
       setVoteCounts(counts)
+      setWinLossBySongId(winLoss)
       setTotalVoteRounds(rounds)
       setCurrentMatch(pickNextMatch(reloaded, counts))
       setError(null)
@@ -206,9 +225,10 @@ export function SongProvider({ children }: { children: ReactNode }) {
           repository.getAllVotes(),
           repository.getVoteRoundCount(),
         ])
-        const counts = computeVoteCounts(votes)
+        const { voteCounts: counts, winLossBySongId: winLoss } = deriveVoteState(votes)
         setSongs(updated)
         setVoteCounts(counts)
+        setWinLossBySongId(winLoss)
         setTotalVoteRounds(rounds)
         setCurrentMatch(pickNextMatch(updated, counts))
         setError(null)
@@ -228,6 +248,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      winLossBySongId,
       totalVoteRounds,
       userVoteCount,
       vote,
@@ -243,6 +264,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       error,
       storageMode,
       voteCounts,
+      winLossBySongId,
       totalVoteRounds,
       userVoteCount,
       vote,

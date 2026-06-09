@@ -4,6 +4,7 @@ import { localSongRepository } from './storage'
 import { getDeletionHashes, removeDeletionHash } from './localDeletionHashes'
 import { getSongRepository } from './repository'
 import { computeVoteCounts } from './voteCounts'
+import { computeWinLossBySongId } from './winLossScore'
 
 export type DeletionPreview = {
   title: string
@@ -125,5 +126,10 @@ export async function reloadSongsAfterTokenDelete() {
     repository.getAllVotes(),
     repository.getVoteRoundCount(),
   ])
-  return { songs, voteCounts: computeVoteCounts(votes), totalVoteRounds }
+  return {
+    songs,
+    voteCounts: computeVoteCounts(votes),
+    winLossBySongId: computeWinLossBySongId(votes),
+    totalVoteRounds,
+  }
 }

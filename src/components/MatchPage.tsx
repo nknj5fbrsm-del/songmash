@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { GitCompare, Info, Shuffle } from 'lucide-react'
+import { GitCompare, Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
-import { EloInfoModal } from './EloInfoModal'
 import { PairingInfoModal } from './PairingInfoModal'
 import { SongCard } from './SongCard'
 import { VoteBadge } from './VoteBadge'
 
-function MatchInfoButtons({
+function MatchInfoButton({
   className,
-  onEloClick,
   onPairingClick,
 }: {
   className?: string
-  onEloClick: () => void
   onPairingClick: () => void
 }) {
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-3 ${className ?? ''}`}>
-      <button type="button" onClick={onEloClick} className="btn-subtle">
-        <Info className="h-4 w-4" />
-        Was ist ELO
-      </button>
+    <div className={`flex justify-center ${className ?? ''}`}>
       <button type="button" onClick={onPairingClick} className="btn-subtle">
         <GitCompare className="h-4 w-4" />
         Match Auswahl
@@ -31,7 +24,6 @@ function MatchInfoButtons({
 
 export function MatchPage() {
   const { currentMatch, vote, userVoteCount } = useSongs()
-  const [eloInfoOpen, setEloInfoOpen] = useState(false)
   const [pairingInfoOpen, setPairingInfoOpen] = useState(false)
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
@@ -54,13 +46,6 @@ export function MatchPage() {
     resetPlayers()
   }, [currentMatch?.songA.id, currentMatch?.songB.id, resetPlayers])
 
-  const infoModals = (
-    <>
-      <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
-      <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
-    </>
-  )
-
   if (!currentMatch) {
     return (
       <>
@@ -71,13 +56,12 @@ export function MatchPage() {
           <p className="mt-2 text-sm text-neutral-500">
             Reiche einen Song ein, um loszulegen.
           </p>
-          <MatchInfoButtons
+          <MatchInfoButton
             className="mt-6"
-            onEloClick={() => setEloInfoOpen(true)}
             onPairingClick={() => setPairingInfoOpen(true)}
           />
         </div>
-        {infoModals}
+        <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
       </>
     )
   }
@@ -91,14 +75,13 @@ export function MatchPage() {
         <p className="page-subtitle">
           Höre beide Tracks und vote für deinen Favoriten.
         </p>
-        <MatchInfoButtons
+        <MatchInfoButton
           className="mt-4"
-          onEloClick={() => setEloInfoOpen(true)}
           onPairingClick={() => setPairingInfoOpen(true)}
         />
       </header>
 
-      {infoModals}
+      <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
 
       <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-stretch">
         <SongCard

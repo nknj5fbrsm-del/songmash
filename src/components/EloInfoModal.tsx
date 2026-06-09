@@ -56,7 +56,7 @@ export function EloInfoModal({ open, onClose }: EloInfoModalProps) {
           <div className="flex items-center gap-2">
             <Info className="h-6 w-6 shrink-0 text-lime-400" aria-hidden />
             <h2 id={titleId} className="text-xl font-bold text-neutral-50">
-              Was ist ELO
+              Elo &amp; Score
             </h2>
           </div>
           <button
@@ -105,6 +105,24 @@ export function EloInfoModal({ open, onClose }: EloInfoModalProps) {
               Songs mit weniger als {PROVISIONAL_VOTE_THRESHOLD} Match-Teilnahmen nutzen
               vorübergehend einen höheren Faktor ({ELO_K_FACTOR_PROVISIONAL} statt {ELO_K_FACTOR}),
               damit sich neue Einreichungen schneller einpendeln.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="mb-2 font-semibold text-neutral-100">Score im Leaderboard</h3>
+            <p className="text-neutral-400">
+              Der <strong className="text-neutral-200">Prozent-Score</strong> zeigt, wie oft ein
+              Song in direkten Duellen gewinnt — nur wenn du für A oder B votest, nicht bei Skip.
+            </p>
+            <p className="mt-2 text-neutral-500">
+              Formel mit Puffer für neue Songs: (Siege + 5) ÷ (Siege + Niederlagen + 10). Ohne
+              echte Duelle startet der Wert bei etwa 50% und wird stabiler, je mehr Matches
+              entschieden wurden.
+            </p>
+            <p className="mt-2 text-neutral-500">
+              <strong className="font-medium text-neutral-300">Votes</strong> zählen alle
+              Match-Teilnahmen inkl. Skip. Der Score nutzt nur Siege und Niederlagen. Die
+              Platzierung sortiert weiterhin nur nach Elo.
             </p>
           </section>
 
