@@ -28,7 +28,7 @@ export function SubmissionRulesModal({ open, onAccept, onCancel }: SubmissionRul
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = prevOverflow
+      document.body.style.overflow = prevOverflow || ''
     }
   }, [open, onCancel])
 

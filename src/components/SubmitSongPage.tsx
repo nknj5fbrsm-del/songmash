@@ -86,7 +86,10 @@ export function SubmitSongPage({ isActive = true, onLeave }: SubmitSongPageProps
   }, [])
 
   useEffect(() => {
-    if (!isActive) return
+    if (!isActive) {
+      setRulesModalOpen(false)
+      return
+    }
     setRulesAccepted(false)
     setRulesModalOpen(true)
     setRulesModalMode('gate')
@@ -298,8 +301,8 @@ export function SubmitSongPage({ isActive = true, onLeave }: SubmitSongPageProps
   }
 
   const handleRulesCancel = () => {
+    setRulesModalOpen(false)
     if (rulesModalMode === 'gate') onLeave?.()
-    else setRulesModalOpen(false)
   }
 
   const openRulesReview = () => {
