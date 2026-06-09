@@ -53,10 +53,12 @@ function AppContent() {
             }
             aria-hidden={page !== 'submit'}
           >
-            <SubmitSongPage />
+            <SubmitSongPage isActive={page === 'submit'} onLeave={() => setPage('match')} />
           </div>
         ) : (
-          page === 'submit' && <SubmitSongPage />
+          page === 'submit' && (
+            <SubmitSongPage isActive onLeave={() => setPage('match')} />
+          )
         )}
         {page === 'moderation' && <ModerationPage onBack={() => setPage('match')} />}
         {page === 'impressum' && <ImpressumPage onBack={() => setPage('match')} />}

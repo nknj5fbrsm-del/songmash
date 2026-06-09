@@ -29,6 +29,7 @@ import {
   validateAudioFile,
 } from '../lib/uploadAsset'
 import { DropZone } from './DropZone'
+import { SubmissionRulesModal } from './SubmissionRulesModal'
 import { TurnstileWidget } from './TurnstileWidget'
 
 type Tab = 'file' | 'link'
@@ -42,8 +43,16 @@ const SOURCE_LABELS: Record<AudioSource, string> = {
   resolved: 'Seiten-Link (aufgelöst)',
 }
 
-export function SubmitSongPage() {
+interface SubmitSongPageProps {
+  isActive?: boolean
+  onLeave?: () => void
+}
+
+export function SubmitSongPage({ isActive = true, onLeave }: SubmitSongPageProps) {
   const { submitSong } = useSongs()
+  const [rulesAccepted, setRulesAccepted] = useState(false)
+  const [rulesModalOpen, setRulesModalOpen] = useState(false)
+  const [rulesModalMode, setRulesModalMode] = useState<'gate' | 'review'>('gate')
   const [tab, setTab] = useState<Tab>('file')
 
   const [title, setTitle] = useState('')
@@ -75,6 +84,13 @@ export function SubmitSongPage() {
     setTurnstileToken(null)
     clearSubmissionSession()
   }, [])
+
+  useEffect(() => {
+    if (!isActive) return
+    setRulesAccepted(false)
+    setRulesModalOpen(true)
+    setRulesModalMode('gate')
+  }, [isActive])
 
   useEffect(() => {
     return () => {
@@ -274,12 +290,33 @@ export function SubmitSongPage() {
   }
 
   const turnstileOk = !isTurnstileEnabled() || Boolean(turnstileToken)
-  const canSubmit = testStatus === 'ok' && turnstileOk && !isSubmitting
+  const canSubmit = rulesAccepted && testStatus === 'ok' && turnstileOk && !isSubmitting
+
+  const handleRulesAccept = () => {
+    setRulesAccepted(true)
+    setRulesModalOpen(false)
+  }
+
+  const handleRulesCancel = () => {
+    if (rulesModalMode === 'gate') onLeave?.()
+    else setRulesModalOpen(false)
+  }
+
+  const openRulesReview = () => {
+    setRulesModalMode('review')
+    setRulesModalOpen(true)
+  }
   const previewUrl =
     tab === 'file' ? audioPreviewUrl : resolvedUrl ? getPlayableAudioUrl(resolvedUrl) : null
 
   return (
     <div className="mx-auto max-w-2xl">
+      <SubmissionRulesModal
+        open={rulesModalOpen}
+        onAccept={handleRulesAccept}
+        onCancel={handleRulesCancel}
+      />
+
       <header className="mb-8 text-center">
         <h1 className="page-title flex items-center justify-center gap-3">
           <Upload className="h-8 w-8 text-lime-400" />
@@ -288,11 +325,23 @@ export function SubmitSongPage() {
         <p className="page-subtitle">
           Datei hochladen oder Link einfügen — optional mit Cover und Infotext.
         </p>
+        {rulesAccepted && (
+          <button
+            type="button"
+            onClick={openRulesReview}
+            className="mt-2 text-xs text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+          >
+            Einreichungsregeln erneut anzeigen
+          </button>
+        )}
       </header>
 
       <form
         onSubmit={handleSubmit}
-        className="card space-y-5 p-8"
+        className={`card space-y-5 p-8 transition-opacity ${
+          rulesAccepted ? '' : 'pointer-events-none opacity-40'
+        }`}
+        aria-hidden={!rulesAccepted}
       >
         <div className="flex gap-2 rounded-xl bg-neutral-800/50 p-1">
           <TabButton active={tab === 'file'} onClick={() => setTab('file')} icon={<FileAudio className="h-4 w-4" />}>

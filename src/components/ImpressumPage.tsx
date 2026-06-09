@@ -76,6 +76,29 @@ export function ImpressumPage({ onBack }: ImpressumPageProps) {
           </p>
         </Section>
 
+        <Section title="Regeln für Nutzerbeiträge (Einreichungsrichtlinien)">
+          <p id="einreichungsregeln">
+            Eingereichte Songs, Cover, Titel, Künstlernamen, Infotexte und Tags stellen{' '}
+            <strong className="text-neutral-300">Nutzerbeiträge</strong> dar. Sie werden von den
+            einreichenden Nutzern in <strong className="text-neutral-300">eigenem Namen und auf
+            eigene Verantwortung</strong> veröffentlicht. Vor dem Einreichen musst du die
+            Einreichungsregeln in der App bestätigen.
+          </p>
+          <p>
+            <strong className="text-neutral-300">Unzulässig</strong> sind insbesondere
+            jugendgefährdende, pornografische, gewaltverherrlichende, volksverhetzende,
+            diskriminierende, extremistische, beleidigende oder illegale Inhalte sowie politische
+            Wahlwerbung, Urheber- und Persönlichkeitsrechtsverletzungen, Irreführung, Spam und
+            Werbung ohne Musikbezug. Dasselbe gilt für Cover-Bilder.
+          </p>
+          <p>
+            Wir sind berechtigt, Beiträge zu <strong className="text-neutral-300">prüfen, zu
+            sperren oder zu löschen</strong>, wenn sie gegen diese Regeln verstoßen oder Rechte
+            Dritter verletzen. Eigene Songs kannst du mit dem beim Einreichen erhaltenen Lösch-Code
+            entfernen; andernfalls nach Prüfung durch den Betreiber.
+          </p>
+        </Section>
+
         <Section title="Freiwillige Spenden">
           <p>
             Über einen Link im Kopfbereich der Website kannst du SongMash{' '}
