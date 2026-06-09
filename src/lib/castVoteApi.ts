@@ -10,6 +10,7 @@ export type CastVoteErrorCode =
   | 'SKIP_HOUR'
   | 'SKIP_DAY'
   | 'SKIP_COOLDOWN'
+  | 'SESSION_MISMATCH'
 
 export class CastVoteError extends Error {
   code: CastVoteErrorCode | 'UNKNOWN'
@@ -26,6 +27,8 @@ export class CastVoteError extends Error {
 export type CastVoteResult = {
   newRatingA: number
   newRatingB: number
+  nextSongAId: string | null
+  nextSongBId: string | null
 }
 
 function getCastVoteUrl(): string | null {
@@ -71,13 +74,15 @@ export async function castVoteViaApi(
     retryAfterSec?: number
     newRatingA?: number
     newRatingB?: number
+    nextSongAId?: string | null
+    nextSongBId?: string | null
   }
 
   if (!res.ok) {
     throw new CastVoteError(
       data.error ?? 'Vote konnte nicht gespeichert werden.',
       data.code ?? 'UNKNOWN',
-      data.retryAfterSec ?? 5,
+      data.retryAfterSec ?? (res.status === 409 ? 0 : 5),
     )
   }
 
@@ -85,5 +90,10 @@ export async function castVoteViaApi(
     throw new Error('Ungültige Server-Antwort.')
   }
 
-  return { newRatingA: data.newRatingA, newRatingB: data.newRatingB }
+  return {
+    newRatingA: data.newRatingA,
+    newRatingB: data.newRatingB,
+    nextSongAId: data.nextSongAId ?? null,
+    nextSongBId: data.nextSongBId ?? null,
+  }
 }

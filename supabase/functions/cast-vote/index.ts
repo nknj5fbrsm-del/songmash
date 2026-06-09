@@ -1,17 +1,25 @@
 /**
- * Vote + Elo serverseitig mit Rate-Limits (IP + voter_id).
+ * Vote + Elo serverseitig mit Rate-Limits (IP + voter_id) und Match-Session.
  * Deploy: npx supabase functions deploy cast-vote --project-ref …
- * Migration: 20260608140000_vote_rate_limits.sql
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { calculateElo } from '../_shared/elo.ts'
 import { clientIp } from '../_shared/turnstile.ts'
+import { fetchGlobalVoteCounts } from '../_shared/voteCounts.ts'
 import {
   evaluateRateLimits,
   fetchRecentRateEvents,
   pruneOldRateEvents,
 } from '../_shared/voteRateLimit.ts'
+import {
+  advancePairingAfterVote,
+  loadVoterSession,
+  pickNextMatchForSongs,
+  saveVoterSession,
+  sessionMatchesVote,
+  sessionPairingState,
+} from '../_shared/voterMatchSession.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,6 +74,14 @@ Deno.serve(async (req) => {
     const ip = clientIp(req) ?? 'unknown'
     const ipKey = `ip:${ip}`
     const supabase = createClient(supabaseUrl, serviceKey)
+
+    const session = await loadVoterSession(supabase, voterId)
+    if (!session || !sessionMatchesVote(session, songAId, songBId)) {
+      return json(
+        { error: 'Dieses Match ist nicht mehr aktiv. Seite neu laden.', code: 'SESSION_MISMATCH' },
+        409,
+      )
+    }
 
     const sinceDay = new Date(Date.now() - 86_400_000).toISOString()
     const pruneBefore = new Date(Date.now() - 48 * 3_600_000).toISOString()
@@ -150,9 +166,34 @@ Deno.serve(async (req) => {
     })
     if (rateError) throw new Error(rateError.message)
 
+    const finished = { songAId, songBId }
+    const advancedPairing = advancePairingAfterVote(sessionPairingState(session), finished)
+
+    const [{ data: allSongRows, error: allSongsError }, voteCounts] = await Promise.all([
+      supabase.from('songs').select('id'),
+      fetchGlobalVoteCounts(supabase),
+    ])
+    if (allSongsError) throw new Error(allSongsError.message)
+
+    const allSongs = (allSongRows ?? []).map((row: { id: string }) => ({ id: row.id }))
+    const nextMatch = pickNextMatchForSongs(allSongs, advancedPairing, voteCounts)
+
+    let nextSongAId: string | null = null
+    let nextSongBId: string | null = null
+
+    if (nextMatch) {
+      await saveVoterSession(supabase, voterId, nextMatch, advancedPairing)
+      nextSongAId = nextMatch.songAId
+      nextSongBId = nextMatch.songBId
+    } else {
+      await supabase.from('voter_match_sessions').delete().eq('voter_id', voterId)
+    }
+
     return json({
       newRatingA,
       newRatingB,
+      nextSongAId,
+      nextSongBId,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Vote fehlgeschlagen.'

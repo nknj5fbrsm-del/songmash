@@ -207,6 +207,23 @@ Ohne Migration **und** deployte Function funktionieren Votes in Production nicht
 
 ---
 
+## 9c. Match-Session (Reload-sicher)
+
+Migration:
+
+`supabase/migrations/20260608150000_voter_match_sessions.sql`
+
+**Edge Functions deployen:**
+
+```bash
+npx supabase functions deploy get-match cast-vote --project-ref cwymmgfstfkgaiatbsev
+```
+
+- `get-match`: liefert dasselbe Paar nach Reload (24 h Session)
+- `cast-vote`: prüft aktives Paar, liefert `nextSongAId` / `nextSongBId` nach dem Vote
+
+---
+
 ## 10. App starten
 
 ```bash

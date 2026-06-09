@@ -71,7 +71,12 @@ const localAsyncRepository: SongRepository = {
     voteCountB,
   }: CastVoteParams): Promise<CastVoteResult> {
     if (winner === 'skip') {
-      return { newRatingA: ratingA, newRatingB: ratingB }
+      return {
+        newRatingA: ratingA,
+        newRatingB: ratingB,
+        nextSongAId: null,
+        nextSongBId: null,
+      }
     }
 
     const { newRatingA, newRatingB } = calculateElo(ratingA, ratingB, winner, {
@@ -79,7 +84,7 @@ const localAsyncRepository: SongRepository = {
       voteCountB,
     })
     await this.updateEloRatings(songAId, newRatingA, songBId, newRatingB)
-    return { newRatingA, newRatingB }
+    return { newRatingA, newRatingB, nextSongAId: null, nextSongBId: null }
   },
 
   async getAllVotes() {

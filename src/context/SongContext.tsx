@@ -4,18 +4,11 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { MOCK_SONGS } from '../data/mockSongs'
 import { CastVoteError } from '../lib/castVoteApi'
-import {
-  advancePairBans,
-  pickRandomMatch,
-  pairingOptionsFromState,
-  type BannedPair,
-} from '../lib/match'
 import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
@@ -26,6 +19,12 @@ import {
   computeWinLossBySongId,
   type WinLossStats,
 } from '../lib/winLossScore'
+import {
+  advanceLocalMatch,
+  clearLocalPairingSession,
+  matchFromIds,
+} from '../lib/pairingSession'
+import { resolveCurrentMatch } from '../lib/resolveMatch'
 import type { Song, VoteMatch, VoteRecord, VoteResult } from '../types/song'
 
 function deriveVoteState(votes: VoteRecord[]) {
@@ -74,28 +73,6 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
   const [voteCooldownUntil, setVoteCooldownUntil] = useState(0)
 
-  const pairingRef = useRef<{ excludeSongIds: string[]; bannedPairs: BannedPair[] }>({
-    excludeSongIds: [],
-    bannedPairs: [],
-  })
-
-  const pickNextMatch = useCallback((songList: Song[], counts: Map<string, number>) => {
-    return pickRandomMatch(
-      songList,
-      pairingOptionsFromState(pairingRef.current, counts),
-    )
-  }, [])
-
-  const finishMatchAndPickNext = useCallback(
-    (finished: VoteMatch, songList: Song[], counts: Map<string, number>) => {
-      const state = pairingRef.current
-      state.bannedPairs = advancePairBans(state.bannedPairs, finished)
-      state.excludeSongIds = [finished.songA.id, finished.songB.id]
-      return pickNextMatch(songList, counts)
-    },
-    [pickNextMatch],
-  )
-
   useEffect(() => {
     let cancelled = false
 
@@ -113,11 +90,13 @@ export function SongProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
 
         const { voteCounts: counts, winLossBySongId: winLoss } = deriveVoteState(votes)
+        const match = await resolveCurrentMatch(loaded, counts)
+
         setSongs(loaded)
         setVoteCounts(counts)
         setWinLossBySongId(winLoss)
         setTotalVoteRounds(rounds)
-        setCurrentMatch(pickRandomMatch(loaded, { voteCounts: counts }))
+        setCurrentMatch(match)
       } catch (err) {
         if (cancelled) return
         setError(err instanceof Error ? err.message : 'Songs konnten nicht geladen werden.')
@@ -133,8 +112,12 @@ export function SongProvider({ children }: { children: ReactNode }) {
   }, [repository])
 
   const refreshMatch = useCallback(() => {
-    setCurrentMatch(pickNextMatch(songs, voteCounts))
-  }, [songs, voteCounts, pickNextMatch])
+    void resolveCurrentMatch(songs, voteCounts)
+      .then(setCurrentMatch)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Match konnte nicht geladen werden.')
+      })
+  }, [songs, voteCounts])
 
   const vote = useCallback(
     async (result: VoteResult) => {
@@ -146,7 +129,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       const voteCountB = voteCounts.get(songB.id) ?? 0
 
       try {
-        const { newRatingA, newRatingB } = await repository.castVote({
+        const castResult = await repository.castVote({
           songAId: songA.id,
           songBId: songB.id,
           winner: result,
@@ -157,8 +140,8 @@ export function SongProvider({ children }: { children: ReactNode }) {
         })
 
         const updated = songs.map((song) => {
-          if (song.id === songA.id) return { ...song, eloRating: newRatingA }
-          if (song.id === songB.id) return { ...song, eloRating: newRatingB }
+          if (song.id === songA.id) return { ...song, eloRating: castResult.newRatingA }
+          if (song.id === songB.id) return { ...song, eloRating: castResult.newRatingB }
           return song
         })
 
@@ -174,9 +157,26 @@ export function SongProvider({ children }: { children: ReactNode }) {
         }
         setVoteCooldownUntil(Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000)
         setError(null)
-        setCurrentMatch(finishMatchAndPickNext(currentMatch, updated, nextCounts))
+
+        if (storageMode === 'supabase') {
+          const next =
+            castResult.nextSongAId && castResult.nextSongBId
+              ? matchFromIds(updated, castResult.nextSongAId, castResult.nextSongBId)
+              : null
+          setCurrentMatch(next)
+        } else {
+          setCurrentMatch(advanceLocalMatch(currentMatch, updated, nextCounts))
+        }
       } catch (err) {
         if (err instanceof CastVoteError) {
+          if (err.code === 'SESSION_MISMATCH') {
+            try {
+              const match = await resolveCurrentMatch(songs, voteCounts)
+              setCurrentMatch(match)
+            } catch {
+              // ignore resync failure
+            }
+          }
           setVoteCooldownUntil(Date.now() + err.retryAfterSec * 1000)
           setError(err.message)
           return
@@ -190,7 +190,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       voteCounts,
       voteCooldownUntil,
       repository,
-      finishMatchAndPickNext,
+      storageMode,
     ],
   )
 
@@ -214,15 +214,17 @@ export function SongProvider({ children }: { children: ReactNode }) {
       const result = await deleteSongByTokenRequest(token)
       const { songs: reloaded, voteCounts: counts, winLossBySongId: winLoss, totalVoteRounds: rounds } =
         await reloadSongsAfterTokenDelete()
+      if (storageMode === 'local') clearLocalPairingSession()
+      const match = await resolveCurrentMatch(reloaded, counts)
       setSongs(reloaded)
       setVoteCounts(counts)
       setWinLossBySongId(winLoss)
       setTotalVoteRounds(rounds)
-      setCurrentMatch(pickNextMatch(reloaded, counts))
+      setCurrentMatch(match)
       setError(null)
       return result
     },
-    [pickNextMatch],
+    [storageMode],
   )
 
   const removeSong = useCallback(
@@ -234,18 +236,20 @@ export function SongProvider({ children }: { children: ReactNode }) {
           repository.getVoteRoundCount(),
         ])
         const { voteCounts: counts, winLossBySongId: winLoss } = deriveVoteState(votes)
+        if (storageMode === 'local') clearLocalPairingSession()
+        const match = await resolveCurrentMatch(updated, counts)
         setSongs(updated)
         setVoteCounts(counts)
         setWinLossBySongId(winLoss)
         setTotalVoteRounds(rounds)
-        setCurrentMatch(pickNextMatch(updated, counts))
+        setCurrentMatch(match)
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Song konnte nicht gelöscht werden.')
         throw err
       }
     },
-    [repository, pickNextMatch],
+    [repository, storageMode],
   )
 
   const value = useMemo(
