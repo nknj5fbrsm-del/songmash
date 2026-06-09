@@ -12,6 +12,14 @@ export type CastVoteErrorCode =
   | 'SKIP_COOLDOWN'
   | 'SESSION_MISMATCH'
 
+export const VOTE_RATE_LIMIT_CODES = ['RATE_MINUTE', 'RATE_HOUR', 'RATE_DAY'] as const
+
+export function isVoteRateLimitCode(
+  code: CastVoteErrorCode | 'UNKNOWN',
+): code is (typeof VOTE_RATE_LIMIT_CODES)[number] {
+  return (VOTE_RATE_LIMIT_CODES as readonly string[]).includes(code)
+}
+
 export class CastVoteError extends Error {
   code: CastVoteErrorCode | 'UNKNOWN'
   retryAfterSec: number

@@ -29,21 +29,34 @@ function subscribeCooldownTick(onStoreChange: () => void) {
   return () => window.clearInterval(id)
 }
 
-function useCooldownActive(until: number): boolean {
+function getCooldownSecondsSnapshot(until: number): number {
+  if (until <= 0) return 0
+  const remaining = until - Date.now()
+  return remaining > 0 ? Math.max(1, Math.ceil(remaining / 1000)) : 0
+}
+
+function useCooldownSeconds(until: number): number {
   return useSyncExternalStore(
     subscribeCooldownTick,
-    () => Date.now() < until,
-    () => false,
+    () => getCooldownSecondsSnapshot(until),
+    () => 0,
   )
 }
 
+function useCooldownActive(until: number): boolean {
+  return useCooldownSeconds(until) > 0
+}
+
 export function MatchPage() {
-  const { currentMatch, vote, userVoteCount, skipCooldownUntil, error } = useSongs()
+  const { currentMatch, vote, userVoteCount, skipCooldownUntil, voteRateLimitUntil, error } =
+    useSongs()
   const [pairingInfoOpen, setPairingInfoOpen] = useState(false)
   const skipCooldownActive = useCooldownActive(skipCooldownUntil)
-  const skipCooldownSec = skipCooldownActive
-    ? Math.max(1, Math.ceil((skipCooldownUntil - Date.now()) / 1000))
-    : 0
+  const skipCooldownSec = useCooldownSeconds(skipCooldownUntil)
+  const voteRateLimitSec = useCooldownSeconds(voteRateLimitUntil)
+  const voteRateLimitActive = voteRateLimitSec > 0
+  const skipInactive = skipCooldownActive || voteRateLimitActive
+  const skipInactiveSec = skipCooldownActive ? skipCooldownSec : voteRateLimitSec
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
 
@@ -103,6 +116,11 @@ export function MatchPage() {
       {error && (
         <p className="alert-error mx-auto mb-4 max-w-lg text-center text-sm" role="alert">
           {error}
+          {voteRateLimitSec > 0 && (
+            <span className="mt-1 block font-mono tabular-nums text-red-200/90">
+              Noch {voteRateLimitSec}s
+            </span>
+          )}
         </p>
       )}
 
@@ -114,6 +132,7 @@ export function MatchPage() {
           audioRef={audioRefA}
           onPlay={() => pauseOther('A')}
           onVote={() => vote('A')}
+          voteDisabled={voteRateLimitActive}
         />
 
         <div className="flex w-full flex-col items-center justify-center gap-4 py-2 lg:w-44 lg:shrink-0 lg:self-center">
@@ -121,16 +140,21 @@ export function MatchPage() {
           <button
             type="button"
             onClick={() => vote('skip')}
-            disabled={skipCooldownActive}
-            className="btn-subtle w-full max-w-xs disabled:cursor-not-allowed disabled:opacity-50 lg:max-w-none"
+            disabled={skipInactive}
+            aria-disabled={skipInactive}
+            className={
+              skipInactive
+                ? 'flex w-full max-w-xs cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/60 px-5 py-3 text-sm font-medium text-neutral-500 lg:max-w-none'
+                : 'btn-subtle w-full max-w-xs lg:max-w-none'
+            }
             title={
-              skipCooldownActive
-                ? `Kurz warten (${skipCooldownSec}s)`
+              skipInactive
+                ? `Kurz warten (${skipInactiveSec}s)`
                 : 'Überspringen ohne Elo-Änderung'
             }
           >
-            <Shuffle className="h-4 w-4" />
-            {skipCooldownActive ? `Pause (${skipCooldownSec}s)` : 'Skip / Unentschieden'}
+            <Shuffle className={`h-4 w-4 shrink-0 ${skipInactive ? 'text-neutral-600' : ''}`} />
+            {skipInactive ? `Pause (${skipInactiveSec}s)` : 'Skip / Unentschieden'}
           </button>
         </div>
 
@@ -141,6 +165,7 @@ export function MatchPage() {
           audioRef={audioRefB}
           onPlay={() => pauseOther('B')}
           onVote={() => vote('B')}
+          voteDisabled={voteRateLimitActive}
         />
       </div>
     </div>

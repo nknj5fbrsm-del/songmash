@@ -8,10 +8,17 @@ import {
   type ReactNode,
 } from 'react'
 import { MOCK_SONGS } from '../data/mockSongs'
-import { CastVoteError } from '../lib/castVoteApi'
+import { CastVoteError, isVoteRateLimitCode } from '../lib/castVoteApi'
 import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
+import {
+  readSkipCooldownUntil,
+  readVoteRateLimitMessage,
+  readVoteRateLimitUntil,
+  writeSkipCooldownUntil,
+  writeVoteRateLimitUntil,
+} from '../lib/voteCooldownStorage'
 import { VOTE_LIMITS } from '../lib/voteLimits'
 import { computeVoteCounts, incrementVoteCounts } from '../lib/voteCounts'
 import {
@@ -45,6 +52,7 @@ interface SongContextValue {
   totalVoteRounds: number
   userVoteCount: number
   skipCooldownUntil: number
+  voteRateLimitUntil: number
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
@@ -69,16 +77,34 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [totalVoteRounds, setTotalVoteRounds] = useState(0)
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => readVoteRateLimitMessage())
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
-  const [skipCooldownUntil, setSkipCooldownUntil] = useState(0)
+  const [skipCooldownUntil, setSkipCooldownUntil] = useState(() => readSkipCooldownUntil())
+  const [voteRateLimitUntil, setVoteRateLimitUntil] = useState(() => readVoteRateLimitUntil())
+
+  useEffect(() => {
+    if (voteRateLimitUntil <= 0) return
+    const remaining = voteRateLimitUntil - Date.now()
+    if (remaining <= 0) {
+      setVoteRateLimitUntil(0)
+      setError(null)
+      writeVoteRateLimitUntil(0)
+      return
+    }
+    const id = window.setTimeout(() => {
+      setVoteRateLimitUntil(0)
+      setError(null)
+      writeVoteRateLimitUntil(0)
+    }, remaining)
+    return () => window.clearTimeout(id)
+  }, [voteRateLimitUntil])
 
   useEffect(() => {
     let cancelled = false
 
     async function loadSongs() {
       setIsLoading(true)
-      setError(null)
+      if (readVoteRateLimitUntil() <= Date.now()) setError(null)
 
       try {
         await repository.seedIfEmpty(MOCK_SONGS)
@@ -122,7 +148,10 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const vote = useCallback(
     async (result: VoteResult) => {
       if (!currentMatch) return
-      if (result === 'skip' && Date.now() < skipCooldownUntil) return
+      if (result === 'skip' && (Date.now() < skipCooldownUntil || Date.now() < voteRateLimitUntil)) {
+        return
+      }
+      if (result !== 'skip' && Date.now() < voteRateLimitUntil) return
 
       const { songA, songB } = currentMatch
       const voteCountA = voteCounts.get(songA.id) ?? 0
@@ -156,8 +185,12 @@ export function SongProvider({ children }: { children: ReactNode }) {
           setUserVoteCount(incrementUserVoteCount())
         }
         if (result === 'skip') {
-          setSkipCooldownUntil(Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000)
+          const until = Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000
+          setSkipCooldownUntil(until)
+          writeSkipCooldownUntil(until)
         }
+        setVoteRateLimitUntil(0)
+        writeVoteRateLimitUntil(0)
         setError(null)
 
         if (storageMode === 'supabase') {
@@ -186,7 +219,18 @@ export function SongProvider({ children }: { children: ReactNode }) {
               err.code === 'SKIP_HOUR' ||
               err.code === 'SKIP_DAY')
           ) {
-            setSkipCooldownUntil(Date.now() + err.retryAfterSec * 1000)
+            setSkipCooldownUntil((prev) => {
+              const next = Math.max(prev, Date.now() + err.retryAfterSec * 1000)
+              writeSkipCooldownUntil(next)
+              return next
+            })
+          }
+          if (result !== 'skip' && isVoteRateLimitCode(err.code)) {
+            setVoteRateLimitUntil((prev) => {
+              const next = Math.max(prev, Date.now() + err.retryAfterSec * 1000)
+              writeVoteRateLimitUntil(next, err.message)
+              return next
+            })
           }
           setError(err.message)
           return
@@ -199,6 +243,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       songs,
       voteCounts,
       skipCooldownUntil,
+      voteRateLimitUntil,
       repository,
       storageMode,
     ],
@@ -274,6 +319,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       totalVoteRounds,
       userVoteCount,
       skipCooldownUntil,
+      voteRateLimitUntil,
       vote,
       submitSong,
       deleteSongByToken,
@@ -291,6 +337,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       totalVoteRounds,
       userVoteCount,
       skipCooldownUntil,
+      voteRateLimitUntil,
       vote,
       submitSong,
       deleteSongByToken,
