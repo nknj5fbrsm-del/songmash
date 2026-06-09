@@ -97,6 +97,11 @@ export function ImpressumPage({ onBack }: ImpressumPageProps) {
             Dritter verletzen. Eigene Songs kannst du mit dem beim Einreichen erhaltenen Lösch-Code
             entfernen; andernfalls nach Prüfung durch den Betreiber.
           </p>
+          <p>
+            Mutmaßliche Regelverstöße kannst du über die Funktion{' '}
+            <strong className="text-neutral-300">„Inhalt melden“</strong> bei einem Song (Voting
+            oder Leaderboard) oder per E-Mail an uns melden.
+          </p>
         </Section>
 
         <Section title="Freiwillige Spenden">

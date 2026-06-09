@@ -11,6 +11,7 @@ import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 import type { HallOfFameWeek } from '../types/weekCompetition'
 import { EloInfoModal } from './EloInfoModal'
+import { ReportContentButton } from './ReportContentButton'
 import { WeekCompetitionStrip } from './WeekCompetitionStrip'
 import {
   formatScorePercent,
@@ -360,6 +361,9 @@ function LeaderboardRow({
               className="w-full"
               onPlay={onPlay}
             />
+          </div>
+          <div className="mx-auto mt-3 flex max-w-xl justify-end">
+            <ReportContentButton song={song} context="leaderboard" />
           </div>
         </div>
       )}

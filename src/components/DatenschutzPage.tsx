@@ -288,6 +288,14 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
             laufende Browser-Sitzung, nicht auf dem Server).
           </p>
           <p>
+            <strong className="text-neutral-300">Inhalt melden:</strong> Gemeldete Song-IDs (
+            <code className="text-neutral-300">songmash_content_reports</code>) und ein
+            Tageszähler für Meldungen (
+            <code className="text-neutral-300">songmash_content_reports_daily</code>) werden im{' '}
+            <code className="text-neutral-300">localStorage</code> gespeichert — nur technische
+            Kennungen, keine personenbezogenen Daten.
+          </p>
+          <p>
             Wir setzen kein eigenes Tracking ein. Für den Spam-Schutz beim Song-Einreichen können
             technisch notwendige Cookies von Cloudflare Turnstile gesetzt werden (siehe Abschnitt 5).
           </p>

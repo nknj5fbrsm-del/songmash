@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Music2, ThumbsUp } from 'lucide-react'
 import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
+import { ReportContentButton } from './ReportContentButton'
 
 interface SongCardProps {
   song: Song
@@ -51,7 +52,7 @@ export function SongCard({ song, side, onVote, onPlay, voteDisabled, audioRef }:
         ))}
       </div>
 
-      <div className="mb-6 rounded-xl bg-neutral-800/50 p-3">
+      <div className="mb-4 rounded-xl bg-neutral-800/50 p-3">
         <audio
           ref={ref}
           src={getPlayableAudioUrl(song.audioUrl)}
@@ -61,6 +62,10 @@ export function SongCard({ song, side, onVote, onPlay, voteDisabled, audioRef }:
           className="w-full"
           onPlay={onPlay}
         />
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <ReportContentButton song={song} context="match" />
       </div>
 
       <div className="mt-auto">

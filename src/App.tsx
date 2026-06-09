@@ -12,10 +12,12 @@ import { ModerationPage } from './components/ModerationPage'
 import { ImpressumPage } from './components/ImpressumPage'
 import { DatenschutzPage } from './components/DatenschutzPage'
 import { RemoveSongPage } from './components/RemoveSongPage'
+import { ReportContentInfoModal } from './components/ReportContentInfoModal'
 import { useModerator } from './hooks/useModerator'
 
 function AppContent() {
   const [page, setPage] = useState<Page>('match')
+  const [reportInfoOpen, setReportInfoOpen] = useState(false)
   const { isLoading, error } = useSongs()
   const { isConfigured } = useModerator()
 
@@ -71,7 +73,9 @@ function AppContent() {
         onImpressum={() => setPage('impressum')}
         onDatenschutz={() => setPage('datenschutz')}
         onRemoveSong={() => setPage('remove-song')}
+        onReportInfo={() => setReportInfoOpen(true)}
       />
+      <ReportContentInfoModal open={reportInfoOpen} onClose={() => setReportInfoOpen(false)} />
     </div>
     </WeekCompetitionProvider>
   )
