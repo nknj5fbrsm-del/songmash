@@ -131,15 +131,15 @@ function LeaderboardPageContent() {
       {ranked.length === 0 ? (
         <p className="text-center text-neutral-500">Noch keine Songs vorhanden.</p>
       ) : (
-        <>
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="w-full overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80">
+          <div className="leaderboard-toolbar flex flex-col gap-2 border-b border-neutral-800 px-3 py-3 sm:flex-row sm:items-stretch sm:gap-3 sm:px-4">
             <LeaderboardShufflePlayer
               ref={shuffleRef}
               songs={shuffleSongs}
               onActivate={stopRowPlayers}
             />
 
-            <div className="relative w-full sm:w-52 sm:shrink-0">
+            <div className="relative min-w-0 sm:w-52 sm:shrink-0 md:w-56">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
               <input
                 type="search"
@@ -157,7 +157,7 @@ function LeaderboardPageContent() {
           </div>
 
           {latestWinners && winnerSongIds.size > 0 && (
-            <p className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-neutral-500">
+            <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-neutral-800/60 px-3 py-2 text-center text-xs text-neutral-500 sm:px-4">
               <span className="inline-flex items-center gap-1">
                 <Crown className="h-3 w-3 text-lime-400" aria-hidden />
                 Song der Woche (KW {latestWinners.weekNumber})
@@ -170,54 +170,49 @@ function LeaderboardPageContent() {
           )}
 
           {filtered.length === 0 ? (
-            <p className="text-center text-neutral-500">Keine Treffer für „{query.trim()}“.</p>
+            <p className="px-4 py-10 text-center text-neutral-500">
+              Keine Treffer für „{query.trim()}“.
+            </p>
           ) : (
-        <div className="-mx-4 overflow-x-auto overscroll-x-contain sm:mx-0">
-          <div className="inline-block min-w-full rounded-2xl border border-neutral-800 bg-neutral-900/80">
-          <table className="w-full min-w-[22rem] text-left">
-            <thead>
-              <tr className="border-b border-neutral-800 bg-neutral-900 text-xs uppercase tracking-wider text-neutral-500">
-                <th className="px-2 py-3 font-semibold sm:px-6 sm:py-4">#</th>
-                <th className="px-2 py-3 font-semibold sm:px-6 sm:py-4">Titel</th>
-                <th className="hidden px-6 py-4 font-semibold sm:table-cell">Artist</th>
-                <th className="w-11 px-1 py-3 font-semibold sm:w-auto sm:px-6 sm:py-4">
-                  <span className="sr-only">Anhören</span>
-                  <Headphones className="mx-auto h-4 w-4" aria-hidden />
-                </th>
-                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
+            <>
+              <div
+                className="leaderboard-grid hidden border-b border-neutral-800 bg-neutral-900 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 sm:grid sm:px-4 lg:text-xs"
+                aria-hidden
+              >
+                <span className="text-center">#</span>
+                <span />
+                <span>Titel</span>
+                <span className="text-right" title="Match-Teilnahmen">
                   Votes
-                </th>
-                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
+                </span>
+                <span className="text-right" title="Siegquote">
                   Score
-                </th>
-                <th className="whitespace-nowrap px-2 py-3 text-right font-semibold sm:px-6 sm:py-4">
-                  Elo
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(({ song, rank }) => (
-                <LeaderboardRow
-                  key={song.id}
-                  song={song}
-                  rank={rank}
-                  voteCount={voteCounts.get(song.id) ?? 0}
-                  winLoss={getWinLossStats(winLossBySongId, song.id)}
-                  expanded={expandedId === song.id}
-                  isWeekChampion={latestWinners?.championId === song.id}
-                  isWeekMvp={latestWinners?.mvpId === song.id}
-                  weekNumber={latestWinners?.weekNumber}
-                  onToggle={() => togglePlayer(song.id)}
-                  onPlay={() => pauseOthers(song.id)}
-                  registerAudio={registerAudio}
-                />
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
+                </span>
+                <span className="text-right">Elo</span>
+                <span className="sr-only">Anhören</span>
+              </div>
+
+              <ul>
+                {filtered.map(({ song, rank }) => (
+                  <LeaderboardRow
+                    key={song.id}
+                    song={song}
+                    rank={rank}
+                    voteCount={voteCounts.get(song.id) ?? 0}
+                    winLoss={getWinLossStats(winLossBySongId, song.id)}
+                    expanded={expandedId === song.id}
+                    isWeekChampion={latestWinners?.championId === song.id}
+                    isWeekMvp={latestWinners?.mvpId === song.id}
+                    weekNumber={latestWinners?.weekNumber}
+                    onToggle={() => togglePlayer(song.id)}
+                    onPlay={() => pauseOthers(song.id)}
+                    registerAudio={registerAudio}
+                  />
+                ))}
+              </ul>
+            </>
           )}
-        </>
+        </div>
       )}
 
       <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
@@ -256,49 +251,48 @@ function LeaderboardRow({
     'ring-2 ring-lime-300/80 shadow-[0_0_14px_rgba(190,242,100,0.5)]'
 
   return (
-    <>
-      <tr
-        className={`border-b border-neutral-800/60 transition-colors hover:bg-neutral-800/30 ${
-          rank <= 3 ? 'bg-lime-400/[0.03]' : ''
-        } ${expanded ? 'bg-neutral-800/20' : ''}`}
-      >
-        <td className="px-2 py-3 sm:px-6 sm:py-4">
-          <span
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg font-mono text-xs font-bold sm:h-8 sm:w-8 sm:text-sm ${
-              rank === 1
-                ? 'bg-lime-400/20 text-lime-300'
-                : rank === 2
-                  ? 'bg-lime-400/10 text-lime-400/80'
-                  : rank === 3
-                    ? 'bg-neutral-800 text-neutral-300'
-                    : 'text-neutral-500'
+    <li
+      className={`border-b border-neutral-800/60 transition-colors hover:bg-neutral-800/30 ${
+        rank <= 3 ? 'bg-lime-400/[0.03]' : ''
+      } ${expanded ? 'bg-neutral-800/20' : ''}`}
+    >
+      <div className="leaderboard-grid items-center px-3 py-2.5 sm:px-4 sm:py-3">
+        <span
+          className={`inline-flex h-7 w-7 items-center justify-center justify-self-center rounded-lg font-mono text-xs font-bold sm:h-8 sm:w-8 ${
+            rank === 1
+              ? 'bg-lime-400/20 text-lime-300'
+              : rank === 2
+                ? 'bg-lime-400/10 text-lime-400/80'
+                : rank === 3
+                  ? 'bg-neutral-800 text-neutral-300'
+                  : 'text-neutral-500'
+          }`}
+        >
+          {rank}
+        </span>
+
+        {song.coverUrl ? (
+          <img
+            src={song.coverUrl}
+            alt=""
+            className={`h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9 ${
+              isWeekWinner ? winnerCoverGlow : ''
+            }`}
+          />
+        ) : (
+          <div
+            className={`flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500 sm:h-9 sm:w-9 ${
+              isWeekWinner ? winnerCoverGlow : ''
             }`}
           >
-            {rank}
-          </span>
-        </td>
-        <td className="max-w-[11rem] px-2 py-3 sm:max-w-none sm:px-6 sm:py-4">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {song.coverUrl ? (
-              <img
-                src={song.coverUrl}
-                alt=""
-                className={`h-8 w-8 shrink-0 rounded-lg object-cover sm:h-10 sm:w-10 ${
-                  isWeekWinner ? winnerCoverGlow : ''
-                }`}
-              />
-            ) : (
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-xs text-neutral-500 sm:h-10 sm:w-10 ${
-                  isWeekWinner ? winnerCoverGlow : ''
-                }`}
-              >
-                ♪
-              </div>
-            )}
+            ♪
+          </div>
+        )}
 
+        <div className="min-w-0">
+          <div className="flex items-start gap-1.5">
             {(isWeekChampion || isWeekMvp) && (
-              <div className="flex shrink-0 flex-col gap-0.5 sm:flex-row sm:gap-1">
+              <div className="mt-0.5 flex shrink-0 gap-0.5">
                 {isWeekChampion && (
                   <span title={`Song der Woche (${kwLabel})`}>
                     <Crown
@@ -317,60 +311,60 @@ function LeaderboardRow({
                 )}
               </div>
             )}
-
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-medium text-neutral-100">{song.title}</div>
-              <div className="truncate text-xs text-neutral-500 sm:hidden">{song.artist}</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-neutral-100">{song.title}</div>
+              <div className="truncate text-xs text-neutral-500">{song.artist}</div>
             </div>
           </div>
-        </td>
-        <td className="hidden px-6 py-4 text-neutral-400 sm:table-cell">{song.artist}</td>
-        <td className="w-11 px-1 py-3 text-center sm:w-auto sm:px-6 sm:py-4">
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={expanded}
-            aria-label={expanded ? `${song.title} ausblenden` : `${song.title} anhören`}
-            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${
-              expanded
-                ? 'bg-lime-400 text-neutral-950'
-                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-lime-400'
-            }`}
-          >
-            <Headphones className="h-4 w-4" />
-          </button>
-        </td>
-        <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm text-neutral-300 sm:px-6 sm:py-4 sm:text-base">
+        </div>
+
+        <span
+          className="text-right font-mono text-xs tabular-nums text-neutral-400 sm:text-sm"
+          title="Match-Teilnahmen"
+        >
           {voteCount}
-        </td>
-        <td
-          className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm text-neutral-200 sm:px-6 sm:py-4 sm:text-base"
+        </span>
+        <span
+          className="text-right font-mono text-xs tabular-nums text-neutral-200 sm:text-sm"
           title={formatWinLossTooltip(winLoss.wins, winLoss.losses)}
         >
           {formatScorePercent(winLoss.score)}
-        </td>
-        <td className="whitespace-nowrap px-2 py-3 text-right font-mono text-sm font-semibold text-lime-400 sm:px-6 sm:py-4 sm:text-base">
+        </span>
+        <span className="text-right font-mono text-xs font-semibold tabular-nums text-lime-400 sm:text-sm">
           {song.eloRating}
-        </td>
-      </tr>
+        </span>
+
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? `${song.title} ausblenden` : `${song.title} anhören`}
+          className={`inline-flex h-8 w-8 items-center justify-center justify-self-end rounded-lg transition-colors sm:h-9 sm:w-9 ${
+            expanded
+              ? 'bg-lime-400 text-neutral-950'
+              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-lime-400'
+          }`}
+        >
+          <Headphones className="h-4 w-4" />
+        </button>
+      </div>
+
       {expanded && (
-        <tr className="border-b border-neutral-800/60 bg-neutral-800/10">
-          <td colSpan={7} className="px-2 py-3 sm:px-6 sm:py-4">
-            <div className="mx-auto max-w-xl rounded-xl bg-neutral-800/50 p-3">
-              <audio
-                ref={(el) => registerAudio(song.id, el)}
-                src={getPlayableAudioUrl(song.audioUrl)}
-                controls
-                controlsList="nodownload"
-                autoPlay
-                preload="metadata"
-                className="w-full"
-                onPlay={onPlay}
-              />
-            </div>
-          </td>
-        </tr>
+        <div className="border-t border-neutral-800/40 bg-neutral-800/10 px-3 py-3 md:px-4 md:py-4">
+          <div className="mx-auto max-w-xl rounded-xl bg-neutral-800/50 p-3">
+            <audio
+              ref={(el) => registerAudio(song.id, el)}
+              src={getPlayableAudioUrl(song.audioUrl)}
+              controls
+              controlsList="nodownload"
+              autoPlay
+              preload="metadata"
+              className="w-full"
+              onPlay={onPlay}
+            />
+          </div>
+        </div>
       )}
-    </>
+    </li>
   )
 }

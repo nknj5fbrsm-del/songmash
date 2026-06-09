@@ -36,11 +36,11 @@ function useCooldownActive(until: number): boolean {
 }
 
 export function MatchPage() {
-  const { currentMatch, vote, userVoteCount, voteCooldownUntil, error } = useSongs()
+  const { currentMatch, vote, userVoteCount, skipCooldownUntil, error } = useSongs()
   const [pairingInfoOpen, setPairingInfoOpen] = useState(false)
-  const voteCooldownActive = useCooldownActive(voteCooldownUntil)
-  const cooldownSec = voteCooldownActive
-    ? Math.max(1, Math.ceil((voteCooldownUntil - Date.now()) / 1000))
+  const skipCooldownActive = useCooldownActive(skipCooldownUntil)
+  const skipCooldownSec = skipCooldownActive
+    ? Math.max(1, Math.ceil((skipCooldownUntil - Date.now()) / 1000))
     : 0
   const audioRefA = useRef<HTMLAudioElement>(null)
   const audioRefB = useRef<HTMLAudioElement>(null)
@@ -114,7 +114,6 @@ export function MatchPage() {
           audioRef={audioRefA}
           onPlay={() => pauseOther('A')}
           onVote={() => vote('A')}
-          voteDisabled={voteCooldownActive}
         />
 
         <div className="flex w-full flex-col items-center justify-center gap-4 py-2 lg:w-44 lg:shrink-0 lg:self-center">
@@ -122,16 +121,16 @@ export function MatchPage() {
           <button
             type="button"
             onClick={() => vote('skip')}
-            disabled={voteCooldownActive}
+            disabled={skipCooldownActive}
             className="btn-subtle w-full max-w-xs disabled:cursor-not-allowed disabled:opacity-50 lg:max-w-none"
             title={
-              voteCooldownActive
-                ? `Kurz warten (${cooldownSec}s)`
+              skipCooldownActive
+                ? `Kurz warten (${skipCooldownSec}s)`
                 : 'Überspringen ohne Elo-Änderung'
             }
           >
             <Shuffle className="h-4 w-4" />
-            {voteCooldownActive ? `Pause (${cooldownSec}s)` : 'Skip / Unentschieden'}
+            {skipCooldownActive ? `Pause (${skipCooldownSec}s)` : 'Skip / Unentschieden'}
           </button>
         </div>
 
@@ -142,7 +141,6 @@ export function MatchPage() {
           audioRef={audioRefB}
           onPlay={() => pauseOther('B')}
           onVote={() => vote('B')}
-          voteDisabled={voteCooldownActive}
         />
       </div>
     </div>

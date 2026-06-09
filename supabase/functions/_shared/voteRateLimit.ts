@@ -96,9 +96,13 @@ function checkWindows(
   return null
 }
 
+/** Mindestabstand nur zwischen zwei Skips — Votes direkt nach einem Skip sind erlaubt. */
 function checkMinInterval(events: RateEventRow[], nowMs: number): RateLimitViolation | null {
   if (events.length === 0) return null
-  const lastMs = new Date(events[0].created_at).getTime()
+  const last = events[0]
+  if (last.winner !== 'skip') return null
+
+  const lastMs = new Date(last.created_at).getTime()
   const elapsedSec = (nowMs - lastMs) / 1000
   if (elapsedSec >= VOTE_LIMITS.MIN_INTERVAL_SEC) return null
   return {
@@ -135,11 +139,13 @@ export function evaluateRateLimits(
   now = Date.now(),
 ): RateLimitViolation | null {
   for (const events of [ipEvents, voterEvents]) {
-    const interval = checkMinInterval(events, now)
-    if (interval) return interval
+    if (winner === 'skip') {
+      const interval = checkMinInterval(events, now)
+      if (interval) return interval
 
-    const streak = checkSkipStreakCooldown(events, now)
-    if (streak) return streak
+      const streak = checkSkipStreakCooldown(events, now)
+      if (streak) return streak
+    }
 
     const windows = checkWindows(events, now, winner)
     if (windows) return windows

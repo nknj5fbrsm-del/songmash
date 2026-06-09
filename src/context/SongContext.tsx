@@ -44,7 +44,7 @@ interface SongContextValue {
   winLossBySongId: Map<string, WinLossStats>
   totalVoteRounds: number
   userVoteCount: number
-  voteCooldownUntil: number
+  skipCooldownUntil: number
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
@@ -71,7 +71,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
-  const [voteCooldownUntil, setVoteCooldownUntil] = useState(0)
+  const [skipCooldownUntil, setSkipCooldownUntil] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -122,7 +122,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const vote = useCallback(
     async (result: VoteResult) => {
       if (!currentMatch) return
-      if (Date.now() < voteCooldownUntil) return
+      if (result === 'skip' && Date.now() < skipCooldownUntil) return
 
       const { songA, songB } = currentMatch
       const voteCountA = voteCounts.get(songA.id) ?? 0
@@ -155,7 +155,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
         if (result !== 'skip') {
           setUserVoteCount(incrementUserVoteCount())
         }
-        setVoteCooldownUntil(Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000)
+        if (result === 'skip') {
+          setSkipCooldownUntil(Date.now() + VOTE_LIMITS.MIN_INTERVAL_SEC * 1000)
+        }
         setError(null)
 
         if (storageMode === 'supabase') {
@@ -177,7 +179,15 @@ export function SongProvider({ children }: { children: ReactNode }) {
               // ignore resync failure
             }
           }
-          setVoteCooldownUntil(Date.now() + err.retryAfterSec * 1000)
+          if (
+            result === 'skip' &&
+            (err.code === 'RATE_INTERVAL' ||
+              err.code === 'SKIP_COOLDOWN' ||
+              err.code === 'SKIP_HOUR' ||
+              err.code === 'SKIP_DAY')
+          ) {
+            setSkipCooldownUntil(Date.now() + err.retryAfterSec * 1000)
+          }
           setError(err.message)
           return
         }
@@ -188,7 +198,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       currentMatch,
       songs,
       voteCounts,
-      voteCooldownUntil,
+      skipCooldownUntil,
       repository,
       storageMode,
     ],
@@ -263,7 +273,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       winLossBySongId,
       totalVoteRounds,
       userVoteCount,
-      voteCooldownUntil,
+      skipCooldownUntil,
       vote,
       submitSong,
       deleteSongByToken,
@@ -280,7 +290,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       winLossBySongId,
       totalVoteRounds,
       userVoteCount,
-      voteCooldownUntil,
+      skipCooldownUntil,
       vote,
       submitSong,
       deleteSongByToken,
