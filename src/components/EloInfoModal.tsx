@@ -96,10 +96,11 @@ export function EloInfoModal({ open, onClose }: EloInfoModalProps) {
               mit Skala 400). Danach:
             </p>
             <p className="mt-2 rounded-lg bg-neutral-950/60 px-3 py-2 font-mono text-xs text-lime-300/90">
-              Neues Elo = Altes Elo + {ELO_K_FACTOR} × (Ergebnis − Erwartung)
+              Neues Elo = Altes Elo + K × (Ergebnis − Erwartung)
             </p>
             <p className="mt-2 text-neutral-500">
-              Ergebnis = 1 für den Gewinner, 0 für den Verlierer. Werte werden gerundet.
+              Ergebnis = 1 für den Gewinner, 0 für den Verlierer. K ist pro Song {ELO_K_FACTOR} oder{' '}
+              {ELO_K_FACTOR_PROVISIONAL} (siehe unten). Werte werden gerundet.
             </p>
             <p className="mt-2 text-neutral-500">
               Songs mit weniger als {PROVISIONAL_VOTE_THRESHOLD} Match-Teilnahmen nutzen

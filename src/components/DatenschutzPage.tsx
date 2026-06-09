@@ -93,8 +93,28 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
             </li>
             <li>
               <strong className="text-neutral-300">Votes:</strong> welche zwei Songs verglichen
-              wurden, das Abstimmungsergebnis (A, B oder Skip) und Zeitstempel — ohne Zuordnung zu
-              einer Person
+              wurden, das Abstimmungsergebnis (A, B oder Skip) und Zeitstempel. Abstimmungen
+              laufen nur über die Edge Function <code className="text-neutral-300">cast-vote</code>{' '}
+              (kein direktes Einfügen aus dem Browser). Die Vote-Einträge selbst sind keinem
+              Nutzerkonto zugeordnet.
+            </li>
+            <li>
+              <strong className="text-neutral-300">Abstimm-Schutz:</strong> zur Begrenzung von Spam
+              werden kurzlebige Ereignisse mit einer pseudonymen{' '}
+              <strong className="text-neutral-300">Voter-ID</strong> (UUID aus deinem Browser) und
+              einem IP-Schlüssel gespeichert (Tabelle{' '}
+              <code className="text-neutral-300">vote_rate_events</code>, automatische Bereinigung
+              nach etwa 48 Stunden).
+            </li>
+            <li>
+              <strong className="text-neutral-300">Match-Sessions:</strong> welches Paar dir
+              aktuell angezeigt wird und Pairing-Sperren, verknüpft mit derselben Voter-ID (bis zu
+              24 Stunden, Tabelle <code className="text-neutral-300">voter_match_sessions</code>).
+            </li>
+            <li>
+              <strong className="text-neutral-300">Plattform-Statistik:</strong> ein aggregierter
+              Zähler der Duell-Runden gesamt (<code className="text-neutral-300">platform_stats</code>
+              ) — ohne Personenbezug; wird beim Löschen einzelner Songs nicht verringert.
             </li>
             <li>
               <strong className="text-neutral-300">Datei-Uploads:</strong> Audio- und
@@ -102,11 +122,12 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
               gespeichert (öffentliche CDN-URL). Metadaten und URLs verbleiben in Supabase.
             </li>
             <li>
-              <strong className="text-neutral-300">Edge Functions:</strong> beim Einreichen externer
-              Links (z. B. Suno) werden URLs serverseitig verarbeitet, um Audio für die Wiedergabe
-              bereitzustellen; zum Löschen per Lösch-Code wird der Code serverseitig geprüft; beim
-              Song-Einreichen wird eine kurzlebige Submit-Session nach erfolgreicher Turnstile-Prüfung
-              vergeben
+              <strong className="text-neutral-300">Edge Functions:</strong> u. a.{' '}
+              <code className="text-neutral-300">cast-vote</code> und{' '}
+              <code className="text-neutral-300">get-match</code> für Abstimmungen und Match-Auswahl;{' '}
+              beim Einreichen externer Links (z. B. Suno) werden URLs serverseitig verarbeitet; zum
+              Löschen per Lösch-Code wird der Code serverseitig geprüft; beim Song-Einreichen wird
+              eine kurzlebige Submit-Session nach erfolgreicher Turnstile-Prüfung vergeben
             </li>
             <li>
               <strong className="text-neutral-300">Lösch-Code:</strong> beim Einreichen wird ein
@@ -248,7 +269,17 @@ export function DatenschutzPage({ onBack }: DatenschutzPageProps) {
           <p>
             <strong className="text-neutral-300">Ohne Supabase:</strong> Song-Daten können im{' '}
             <code className="text-neutral-300">localStorage</code> deines Browsers gespeichert werden
-            (nur lokal auf deinem Gerät).
+            (nur lokal auf deinem Gerät). Die Match-Auswahl liegt dann in der{' '}
+            <code className="text-neutral-300">sessionStorage</code> (nur bis zum Schließen des
+            Tabs).
+          </p>
+          <p>
+            <strong className="text-neutral-300">Mit Supabase:</strong> eine pseudonyme Voter-ID (
+            <code className="text-neutral-300">songmash_voter_id</code>), dein persönlicher
+            Vote-Zähler für Badges (<code className="text-neutral-300">songmash_user_votes</code>)
+            und optional die Einstellung zum Ausblenden des Vote-Emblems (
+            <code className="text-neutral-300">songmash_badge_emblem_hidden</code>) im{' '}
+            <code className="text-neutral-300">localStorage</code>.
           </p>
           <p>
             <strong className="text-neutral-300">Moderation:</strong> Nach Eingabe des

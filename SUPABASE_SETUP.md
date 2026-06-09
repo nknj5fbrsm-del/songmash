@@ -224,6 +224,20 @@ npx supabase functions deploy get-match cast-vote --project-ref cwymmgfstfkgaiat
 
 ---
 
+## 9d. Plattform-Zähler (Duelle gesamt)
+
+Migration:
+
+`supabase/migrations/20260609120000_platform_stats.sql`
+
+- Tabelle `platform_stats` mit `total_vote_rounds` (wird bei jedem Vote per Trigger +1)
+- Beim ersten Anlegen: Startwert = aktuelle Zeilenanzahl in `votes`
+- **Sinkt nicht**, wenn Songs gelöscht werden (Votes werden per Cascade entfernt, Zähler bleibt)
+
+Nur SQL im Editor ausführen — kein Function-Deploy nötig.
+
+---
+
 ## 10. App starten
 
 ```bash

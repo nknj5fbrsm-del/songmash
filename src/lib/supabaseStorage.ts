@@ -204,11 +204,22 @@ export const supabaseSongRepository = {
 
   async getVoteRoundCount(): Promise<number> {
     const supabase = getSupabaseClient()
-    const { count, error } = await supabase
+    const { data, error } = await supabase
+      .from('platform_stats')
+      .select('total_vote_rounds')
+      .eq('id', 'global')
+      .maybeSingle()
+
+    if (!error && data != null) {
+      return Number(data.total_vote_rounds)
+    }
+
+    // Fallback, falls Migration noch nicht ausgeführt wurde
+    const { count, error: votesError } = await supabase
       .from('votes')
       .select('*', { count: 'exact', head: true })
 
-    if (error) throw new Error(error.message)
+    if (votesError) throw new Error(votesError.message)
     return count ?? 0
   },
 

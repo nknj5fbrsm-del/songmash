@@ -111,9 +111,6 @@ function LeaderboardPageContent() {
           <Trophy className="h-8 w-8 text-lime-400" />
           Leaderboard
         </h1>
-        <p className="page-subtitle">
-          Die Perlen der Community — sortiert nach Elo-Rating.
-        </p>
         <button
           type="button"
           onClick={() => setEloInfoOpen(true)}
@@ -123,7 +120,8 @@ function LeaderboardPageContent() {
           Was bedeuten Elo &amp; Score?
         </button>
         <p className="mt-2 text-sm text-neutral-500">
-          Abstimmungsrunden gesamt: {totalVoteRounds}
+          Duelle auf SongMash gesamt:{' '}
+          <span className="tabular-nums text-neutral-400">{totalVoteRounds.toLocaleString('de-DE')}</span>
         </p>
         <WeekCompetitionStrip className="mt-5" />
       </header>

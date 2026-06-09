@@ -68,7 +68,8 @@ export function PairingInfoModal({ open, onClose }: PairingInfoModalProps) {
           <p>
             SongMash stellt dir immer <strong className="text-neutral-100">zwei Songs</strong> gegenüber.
             Welche zwei das sind, hängt nicht vom Elo ab, sondern von Zufall und ein paar fairen Regeln
-            in deiner aktuellen Browser-Session.
+            in <strong className="text-neutral-100">deiner persönlichen Match-Reihe</strong> — auch nach
+            Neuladen bleibt dasselbe Paar, bis du votest oder skipst (bis zu 24 Stunden gültig).
           </p>
 
           <section>

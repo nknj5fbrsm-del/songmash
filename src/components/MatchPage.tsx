@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { GitCompare, Shuffle } from 'lucide-react'
+import { Info, Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
 import { PairingInfoModal } from './PairingInfoModal'
 import { SongCard } from './SongCard'
@@ -13,12 +13,14 @@ function MatchInfoButton({
   onPairingClick: () => void
 }) {
   return (
-    <div className={`flex justify-center ${className ?? ''}`}>
-      <button type="button" onClick={onPairingClick} className="btn-subtle">
-        <GitCompare className="h-4 w-4" />
-        Match Auswahl
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onPairingClick}
+      className={`inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300 ${className ?? ''}`}
+    >
+      <Info className="h-4 w-4 shrink-0 text-lime-400/80" aria-hidden />
+      Wie kommen die Matches zustande?
+    </button>
   )
 }
 
@@ -73,10 +75,9 @@ export function MatchPage() {
           <p className="mt-2 text-sm text-neutral-500">
             Reiche einen Song ein, um loszulegen.
           </p>
-          <MatchInfoButton
-            className="mt-6"
-            onPairingClick={() => setPairingInfoOpen(true)}
-          />
+          <div className="mt-6 flex justify-center">
+            <MatchInfoButton onPairingClick={() => setPairingInfoOpen(true)} />
+          </div>
         </div>
         <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
       </>
@@ -92,10 +93,9 @@ export function MatchPage() {
         <p className="page-subtitle">
           Höre beide Tracks und vote für deinen Favoriten.
         </p>
-        <MatchInfoButton
-          className="mt-4"
-          onPairingClick={() => setPairingInfoOpen(true)}
-        />
+        <div className="mt-2 flex justify-center">
+          <MatchInfoButton onPairingClick={() => setPairingInfoOpen(true)} />
+        </div>
       </header>
 
       <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
