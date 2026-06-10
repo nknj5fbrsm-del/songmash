@@ -67,6 +67,17 @@ export function SubmissionRulesModal({ open, onAccept, onCancel }: SubmissionRul
         </div>
 
         <div className="space-y-4 text-sm leading-relaxed text-neutral-300">
+          <div className="rounded-xl border border-lime-400/20 bg-lime-400/[0.06] px-4 py-3 text-neutral-300">
+            <p className="font-medium text-neutral-100">Maximal fünf Songs pro Person</p>
+            <p className="mt-1.5 text-neutral-400">
+              Damit das Leaderboard fair und übersichtlich bleibt, solltest du höchstens{' '}
+              <strong className="font-medium text-neutral-300">fünf Songs</strong> gleichzeitig
+              einreichen. Wenn du mehr hochlädst, kann die Moderation überzählige Beiträge
+              entfernen — in der Regel beginnend bei den Songs mit dem{' '}
+              <strong className="font-medium text-neutral-300">niedrigsten Elo-Wert</strong>.
+            </p>
+          </div>
+
           <p>
             Bevor du einen Song oder ein Cover hochlädst, bestätige bitte, dass deine Inhalte
             unseren Regeln entsprechen. Du bist für alles verantwortlich, was du einreichst.
