@@ -11,6 +11,8 @@ import { getPlayableAudioUrl } from '../lib/audioProxy'
 import type { Song } from '../types/song'
 import type { HallOfFameWeek } from '../types/weekCompetition'
 import { EloInfoModal } from './EloInfoModal'
+import { HallOfFameModal } from './HallOfFameModal'
+import { headerPillClassName } from './HeaderPillBar'
 import { ReportContentButton } from './ReportContentButton'
 import { WeekCompetitionStrip } from './WeekCompetitionStrip'
 import {
@@ -48,9 +50,11 @@ export function LeaderboardPage() {
 
 function LeaderboardPageContent() {
   const { songs, voteCounts, winLossBySongId, totalVoteRounds } = useSongs()
-  const { hallOfFame } = useWeekCompetitionContext()
+  const { enabled, hallOfFame } = useWeekCompetitionContext()
   const [query, setQuery] = useState('')
   const [eloInfoOpen, setEloInfoOpen] = useState(false)
+  const [hallOfFameOpen, setHallOfFameOpen] = useState(false)
+  const showHallOfFame = enabled && hallOfFame.length > 0
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
   const shuffleRef = useRef<LeaderboardShufflePlayerHandle>(null)
@@ -112,15 +116,32 @@ function LeaderboardPageContent() {
           <Trophy className="h-8 w-8 text-lime-400" />
           Leaderboard
         </h1>
-        <button
-          type="button"
-          onClick={() => setEloInfoOpen(true)}
-          className="mt-2 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
-        >
-          <Info className="h-4 w-4 shrink-0 text-lime-400/80" aria-hidden />
-          Was bedeuten Elo &amp; Score?
-        </button>
-        <p className="mt-2 text-sm text-neutral-500">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEloInfoOpen(true)}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+          >
+            <Info className="h-4 w-4 shrink-0 text-lime-400/80" aria-hidden />
+            Was bedeuten Elo &amp; Score?
+          </button>
+          {showHallOfFame && (
+            <>
+              <span className="text-neutral-700" aria-hidden>
+                ·
+              </span>
+              <button
+                type="button"
+                onClick={() => setHallOfFameOpen(true)}
+                className={headerPillClassName}
+              >
+                <Crown className="h-3.5 w-3.5 shrink-0 text-lime-400" aria-hidden />
+                Hall of Fame
+              </button>
+            </>
+          )}
+        </div>
+        <p className="mt-3 text-sm text-neutral-500">
           Duelle auf SongMash gesamt:{' '}
           <span className="tabular-nums text-neutral-400">{totalVoteRounds.toLocaleString('de-DE')}</span>
         </p>
@@ -215,6 +236,13 @@ function LeaderboardPageContent() {
       )}
 
       <EloInfoModal open={eloInfoOpen} onClose={() => setEloInfoOpen(false)} />
+      {showHallOfFame && (
+        <HallOfFameModal
+          open={hallOfFameOpen}
+          onClose={() => setHallOfFameOpen(false)}
+          weeks={hallOfFame}
+        />
+      )}
     </div>
   )
 }
