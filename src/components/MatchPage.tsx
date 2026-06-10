@@ -48,8 +48,15 @@ function useCooldownActive(until: number): boolean {
 }
 
 export function MatchPage() {
-  const { currentMatch, vote, userVoteCount, skipCooldownUntil, voteRateLimitUntil, error } =
-    useSongs()
+  const {
+    currentMatch,
+    vote,
+    userVoteCount,
+    skipCooldownUntil,
+    voteRateLimitUntil,
+    voteRateLimitMessage,
+    error,
+  } = useSongs()
   const [pairingInfoOpen, setPairingInfoOpen] = useState(false)
   const skipCooldownActive = useCooldownActive(skipCooldownUntil)
   const skipCooldownSec = useCooldownSeconds(skipCooldownUntil)
@@ -113,14 +120,18 @@ export function MatchPage() {
 
       <PairingInfoModal open={pairingInfoOpen} onClose={() => setPairingInfoOpen(false)} />
 
-      {error && (
+      {voteRateLimitActive && (
+        <p className="alert-error mx-auto mb-4 max-w-lg text-center text-sm" role="alert">
+          {voteRateLimitMessage ?? 'Zu viele Votes in kurzer Zeit. Kurz warten.'}
+          <span className="mt-1 block font-mono tabular-nums text-red-200/90">
+            Noch {voteRateLimitSec}s
+          </span>
+        </p>
+      )}
+
+      {error && !voteRateLimitActive && (
         <p className="alert-error mx-auto mb-4 max-w-lg text-center text-sm" role="alert">
           {error}
-          {voteRateLimitSec > 0 && (
-            <span className="mt-1 block font-mono tabular-nums text-red-200/90">
-              Noch {voteRateLimitSec}s
-            </span>
-          )}
         </p>
       )}
 

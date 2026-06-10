@@ -55,3 +55,11 @@ export function readVoteRateLimitMessage(): string | null {
     return null
   }
 }
+
+export function isVoteRateLimitActive(): boolean {
+  return readVoteRateLimitUntil() > Date.now()
+}
+
+export function clearVoteRateLimitStorage(): void {
+  writeVoteRateLimitUntil(0)
+}

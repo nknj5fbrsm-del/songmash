@@ -13,6 +13,8 @@ import { getSongRepository, getStorageMode } from '../lib/repository'
 import { deleteSongByToken as deleteSongByTokenRequest, reloadSongsAfterTokenDelete } from '../lib/deleteSongByToken'
 import { incrementUserVoteCount, readUserVoteCount } from '../lib/userVoteProgress'
 import {
+  clearVoteRateLimitStorage,
+  isVoteRateLimitActive,
   readSkipCooldownUntil,
   readVoteRateLimitMessage,
   readVoteRateLimitUntil,
@@ -41,6 +43,15 @@ function deriveVoteState(votes: VoteRecord[]) {
   }
 }
 
+function clearVoteRateLimitState(
+  setVoteRateLimitUntil: (v: number) => void,
+  setVoteRateLimitMessage: (v: string | null) => void,
+) {
+  setVoteRateLimitUntil(0)
+  setVoteRateLimitMessage(null)
+  clearVoteRateLimitStorage()
+}
+
 interface SongContextValue {
   songs: Song[]
   currentMatch: VoteMatch | null
@@ -53,6 +64,7 @@ interface SongContextValue {
   userVoteCount: number
   skipCooldownUntil: number
   voteRateLimitUntil: number
+  voteRateLimitMessage: string | null
   vote: (result: VoteResult) => Promise<void>
   submitSong: (
     data: Omit<Song, 'id' | 'eloRating' | 'submissionDate'>,
@@ -77,24 +89,23 @@ export function SongProvider({ children }: { children: ReactNode }) {
   const [totalVoteRounds, setTotalVoteRounds] = useState(0)
   const [currentMatch, setCurrentMatch] = useState<VoteMatch | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(() => readVoteRateLimitMessage())
+  const [error, setError] = useState<string | null>(null)
   const [userVoteCount, setUserVoteCount] = useState(() => readUserVoteCount())
   const [skipCooldownUntil, setSkipCooldownUntil] = useState(() => readSkipCooldownUntil())
   const [voteRateLimitUntil, setVoteRateLimitUntil] = useState(() => readVoteRateLimitUntil())
+  const [voteRateLimitMessage, setVoteRateLimitMessage] = useState<string | null>(() =>
+    readVoteRateLimitMessage(),
+  )
 
   useEffect(() => {
     if (voteRateLimitUntil <= 0) return
     const remaining = voteRateLimitUntil - Date.now()
     if (remaining <= 0) {
-      setVoteRateLimitUntil(0)
-      setError(null)
-      writeVoteRateLimitUntil(0)
+      clearVoteRateLimitState(setVoteRateLimitUntil, setVoteRateLimitMessage)
       return
     }
     const id = window.setTimeout(() => {
-      setVoteRateLimitUntil(0)
-      setError(null)
-      writeVoteRateLimitUntil(0)
+      clearVoteRateLimitState(setVoteRateLimitUntil, setVoteRateLimitMessage)
     }, remaining)
     return () => window.clearTimeout(id)
   }, [voteRateLimitUntil])
@@ -104,7 +115,6 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
     async function loadSongs() {
       setIsLoading(true)
-      if (readVoteRateLimitUntil() <= Date.now()) setError(null)
 
       try {
         await repository.seedIfEmpty(MOCK_SONGS)
@@ -125,7 +135,9 @@ export function SongProvider({ children }: { children: ReactNode }) {
         setCurrentMatch(match)
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Songs konnten nicht geladen werden.')
+        if (!isVoteRateLimitActive()) {
+          setError(err instanceof Error ? err.message : 'Songs konnten nicht geladen werden.')
+        }
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -141,6 +153,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
     void resolveCurrentMatch(songs, voteCounts)
       .then(setCurrentMatch)
       .catch((err) => {
+        if (isVoteRateLimitActive()) return
         setError(err instanceof Error ? err.message : 'Match konnte nicht geladen werden.')
       })
   }, [songs, voteCounts])
@@ -189,9 +202,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
           setSkipCooldownUntil(until)
           writeSkipCooldownUntil(until)
         }
-        setVoteRateLimitUntil(0)
-        writeVoteRateLimitUntil(0)
-        setError(null)
+        clearVoteRateLimitState(setVoteRateLimitUntil, setVoteRateLimitMessage)
 
         if (storageMode === 'supabase') {
           const next =
@@ -231,6 +242,8 @@ export function SongProvider({ children }: { children: ReactNode }) {
               writeVoteRateLimitUntil(next, err.message)
               return next
             })
+            setVoteRateLimitMessage(err.message)
+            return
           }
           setError(err.message)
           return
@@ -320,6 +333,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       userVoteCount,
       skipCooldownUntil,
       voteRateLimitUntil,
+      voteRateLimitMessage,
       vote,
       submitSong,
       deleteSongByToken,
@@ -338,6 +352,7 @@ export function SongProvider({ children }: { children: ReactNode }) {
       userVoteCount,
       skipCooldownUntil,
       voteRateLimitUntil,
+      voteRateLimitMessage,
       vote,
       submitSong,
       deleteSongByToken,
