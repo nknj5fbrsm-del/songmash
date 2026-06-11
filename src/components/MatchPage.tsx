@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Info, Shuffle } from 'lucide-react'
 import { useSongs } from '../context/SongContext'
+import { MatchMobileDuell } from './MatchMobileDuell'
 import { PairingInfoModal } from './PairingInfoModal'
 import { SongCard } from './SongCard'
 import { VoteBadge } from './VoteBadge'
@@ -135,7 +136,20 @@ export function MatchPage() {
         </p>
       )}
 
-      <div className="flex flex-col items-stretch gap-6 lg:flex-row lg:items-stretch">
+      <div className="lg:hidden">
+        <MatchMobileDuell
+          songA={songA}
+          songB={songB}
+          userVoteCount={userVoteCount}
+          voteDisabled={voteRateLimitActive}
+          skipInactive={skipInactive}
+          skipInactiveSec={skipInactiveSec}
+          onVote={(side) => vote(side)}
+          onSkip={() => vote('skip')}
+        />
+      </div>
+
+      <div className="hidden flex-col items-stretch gap-6 lg:flex lg:flex-row lg:items-stretch">
         <SongCard
           key={songA.id}
           song={songA}
