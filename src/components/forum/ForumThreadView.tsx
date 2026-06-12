@@ -13,6 +13,7 @@ import type { ForumCategory, ForumPendingAttachments, ForumPost, ForumThreadDeta
 import type { Song } from '../../types/song'
 import { ForumAttachmentDisplay } from './ForumAttachmentDisplay'
 import { ForumAttachmentPicker } from './ForumAttachmentPicker'
+import { ForumPostBody } from './ForumPostBody'
 import { ForumSongEmbed } from './ForumSongEmbed'
 
 interface ForumThreadViewProps {
@@ -341,9 +342,7 @@ export function ForumThreadView({
                 </div>
               ) : (
                 <>
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-neutral-300">
-                    {post.body}
-                  </p>
+                  <ForumPostBody text={post.body} />
                   <ForumAttachmentDisplay imageUrl={post.imageUrl} audioUrl={post.audioUrl} />
                   {song && (
                     <div className="mt-3">
