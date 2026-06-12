@@ -1,11 +1,12 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { ArrowRightLeft, Loader2, Trash2 } from 'lucide-react'
+import { ArrowRightLeft, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import { ForumNavBar } from './ForumNavBar'
 import {
   ForumApiError,
   forumAdminMoveThread,
   forumCreatePost,
   forumDeletePost,
+  forumUpdatePost,
 } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
 import type { ForumCategory, ForumPost, ForumThreadDetail } from '../../types/forum'
@@ -24,6 +25,7 @@ interface ForumThreadViewProps {
   onHome: () => void
   onRefresh: () => void
   onMoved?: (boardId: string) => void
+  onThreadDeleted?: () => void
   moderatorKey?: string
 }
 
@@ -39,12 +41,16 @@ export function ForumThreadView({
   onHome,
   onRefresh,
   onMoved,
+  onThreadDeleted,
   moderatorKey,
 }: ForumThreadViewProps) {
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editBody, setEditBody] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
   const [moveCategoryId, setMoveCategoryId] = useState('')
   const [moveBoardId, setMoveBoardId] = useState('')
@@ -109,13 +115,56 @@ export function ForumThreadView({
     }
   }
 
-  const handleDelete = async (postId: string) => {
-    if (!moderatorKey) return
-    if (!window.confirm('Beitrag wirklich löschen?')) return
-    setDeletingId(postId)
+  const canModifyPost = (post: ForumPost) =>
+    post.authorName === displayName || !!moderatorKey
+
+  const startEdit = (post: ForumPost) => {
+    setEditingPostId(post.id)
+    setEditBody(post.body)
+    setError('')
+  }
+
+  const cancelEdit = () => {
+    setEditingPostId(null)
+    setEditBody('')
+  }
+
+  const handleSaveEdit = async (post: ForumPost) => {
+    if (!canModifyPost(post) || thread.isLocked) return
+    setEditLoading(true)
+    setError('')
     try {
-      await forumDeletePost(postId, moderatorKey)
+      await forumUpdatePost({
+        postId: post.id,
+        body: editBody.trim(),
+        authorName: displayName,
+        moderatorKey,
+      })
+      cancelEdit()
       onRefresh()
+    } catch (err) {
+      setError(err instanceof ForumApiError ? err.message : 'Speichern fehlgeschlagen.')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (post: ForumPost) => {
+    if (!canModifyPost(post)) return
+    if (!window.confirm('Beitrag wirklich löschen?')) return
+    setDeletingId(post.id)
+    setError('')
+    try {
+      const result = await forumDeletePost({
+        postId: post.id,
+        authorName: displayName,
+        moderatorKey,
+      })
+      if (result.threadDeleted) {
+        onThreadDeleted?.()
+      } else {
+        onRefresh()
+      }
     } catch (err) {
       setError(err instanceof ForumApiError ? err.message : 'Löschen fehlgeschlagen.')
     } finally {
@@ -221,6 +270,8 @@ export function ForumThreadView({
       <ul className="mb-6 space-y-3">
         {posts.map((post) => {
           const song = post.songId ? songsById.get(post.songId) : undefined
+          const isEditing = editingPostId === post.id
+          const showActions = canModifyPost(post) && !thread.isLocked
           return (
             <li key={post.id} className="card !p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
@@ -228,25 +279,73 @@ export function ForumThreadView({
                   <p className="text-sm font-semibold text-lime-300/90">{post.authorName}</p>
                   <p className="text-xs text-neutral-600">{formatForumDate(post.createdAt)}</p>
                 </div>
-                {moderatorKey && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(post.id)}
-                    disabled={deletingId === post.id}
-                    className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-red-300"
-                    aria-label="Beitrag löschen"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                {showActions && !isEditing && (
+                  <div className="flex shrink-0 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(post)}
+                      className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-lime-300"
+                      aria-label="Beitrag bearbeiten"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(post)}
+                      disabled={deletingId === post.id}
+                      className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-red-300"
+                      aria-label="Beitrag löschen"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-neutral-300">
-                {post.body}
-              </p>
-              {song && (
-                <div className="mt-3">
-                  <ForumSongEmbed song={song} compact />
+              {isEditing ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value.slice(0, 10000))}
+                    className="input-field min-h-[100px] resize-y text-sm"
+                    autoFocus
+                  />
+                  {song && (
+                    <div>
+                      <ForumSongEmbed song={song} compact />
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveEdit(post)}
+                      disabled={editLoading || editBody.trim().length < 1}
+                      className="btn-primary !py-2 text-sm"
+                    >
+                      {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Speichern
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={editLoading}
+                      className="btn-secondary !py-2 text-sm"
+                    >
+                      <X className="h-4 w-4" />
+                      Abbrechen
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-neutral-300">
+                    {post.body}
+                  </p>
+                  {song && (
+                    <div className="mt-3">
+                      <ForumSongEmbed song={song} compact />
+                    </div>
+                  )}
+                </>
               )}
             </li>
           )

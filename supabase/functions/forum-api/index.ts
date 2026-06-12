@@ -77,7 +77,9 @@ Deno.serve(async (req) => {
       case 'create_post':
         return await handleCreatePost(supabase, body)
       case 'delete_post':
-        return await handleDeletePost(supabase, body, req)
+        return await handleDeletePost(supabase, body)
+      case 'update_post':
+        return await handleUpdatePost(supabase, body)
       case 'admin_upsert_category':
         return await handleAdminUpsertCategory(supabase, body, req)
       case 'admin_delete_category':
@@ -114,11 +116,37 @@ function trimAuthor(name: string | undefined): string {
   return trimmed
 }
 
-function requireModerator(body: ActionBody): void {
+function isModerator(body: ActionBody): boolean {
   const expected = Deno.env.get('MODERATOR_KEY')?.trim()
   const provided = body.moderatorKey?.trim()
-  if (!expected || !provided || provided !== expected) {
+  return !!(expected && provided && provided === expected)
+}
+
+function requireModerator(body: ActionBody): void {
+  if (!isModerator(body)) {
     throw new Error('Moderator-Schlüssel ungültig.')
+  }
+}
+
+async function loadPostForAction(
+  supabase: ReturnType<typeof createClient>,
+  postId: string,
+) {
+  const { data: post, error } = await supabase
+    .from('forum_posts')
+    .select('*')
+    .eq('id', postId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!post) throw new Error('Beitrag nicht gefunden.')
+  return post
+}
+
+function assertOwnPost(body: ActionBody, authorNameInDb: string): void {
+  const authorName = trimAuthor(body.authorName)
+  if (authorNameInDb !== authorName) {
+    throw new Error('Du kannst nur eigene Beiträge bearbeiten oder löschen.')
   }
 }
 
@@ -376,17 +404,105 @@ async function handleCreatePost(supabase: ReturnType<typeof createClient>, body:
   return json({ postId: post.id })
 }
 
-async function handleDeletePost(
-  supabase: ReturnType<typeof createClient>,
-  body: ActionBody,
-  _req: Request,
-) {
-  requireModerator(body)
+async function handleDeletePost(supabase: ReturnType<typeof createClient>, body: ActionBody) {
   const postId = body.postId?.trim()
   if (!postId) throw new Error('postId fehlt.')
 
+  const post = await loadPostForAction(supabase, postId)
+  const asModerator = isModerator(body)
+  if (!asModerator) {
+    assertOwnPost(body, post.author_name)
+  }
+
+  const { data: threadPosts, error: listError } = await supabase
+    .from('forum_posts')
+    .select('id')
+    .eq('thread_id', post.thread_id)
+    .order('created_at', { ascending: true })
+
+  if (listError) throw new Error(listError.message)
+
+  const allPosts = threadPosts ?? []
+  const isOnlyPost = allPosts.length === 1
+  const isFirstPost = allPosts[0]?.id === postId
+
+  if (!asModerator && isFirstPost && allPosts.length > 1) {
+    throw new Error(
+      'Eröffnungsbeitrag kann nicht gelöscht werden, solange Antworten existieren.',
+    )
+  }
+
+  if (isOnlyPost) {
+    const { error: threadError } = await supabase
+      .from('forum_threads')
+      .delete()
+      .eq('id', post.thread_id)
+    if (threadError) throw new Error(threadError.message)
+    return json({ ok: true, threadDeleted: true })
+  }
+
   const { error } = await supabase.from('forum_posts').delete().eq('id', postId)
   if (error) throw new Error(error.message)
+
+  await supabase
+    .from('forum_threads')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', post.thread_id)
+
+  return json({ ok: true })
+}
+
+async function handleUpdatePost(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+  const postId = body.postId?.trim()
+  const postBody = body.body?.trim() ?? ''
+  if (!postId) throw new Error('postId fehlt.')
+  if (postBody.length < 1 || postBody.length > MAX_BODY) {
+    throw new Error(`Beitrag muss 1–${MAX_BODY} Zeichen haben.`)
+  }
+
+  const post = await loadPostForAction(supabase, postId)
+  if (!isModerator(body)) {
+    assertOwnPost(body, post.author_name)
+  }
+
+  const { data: thread, error: threadError } = await supabase
+    .from('forum_threads')
+    .select('is_locked')
+    .eq('id', post.thread_id)
+    .maybeSingle()
+
+  if (threadError) throw new Error(threadError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+  if (thread.is_locked) throw new Error('Dieses Thema ist geschlossen.')
+
+  const songId =
+    body.songId !== undefined ? body.songId?.trim() || null : post.song_id
+  if (songId) await assertSongExists(supabase, songId)
+
+  const { error } = await supabase
+    .from('forum_posts')
+    .update({ body: postBody, song_id: songId })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  const { data: firstPost, error: firstError } = await supabase
+    .from('forum_posts')
+    .select('id')
+    .eq('thread_id', post.thread_id)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (firstError) throw new Error(firstError.message)
+
+  const now = new Date().toISOString()
+  const threadUpdate: { updated_at: string; song_id?: string | null } = { updated_at: now }
+  if (firstPost?.id === postId) {
+    threadUpdate.song_id = songId
+  }
+
+  await supabase.from('forum_threads').update(threadUpdate).eq('id', post.thread_id)
 
   return json({ ok: true })
 }

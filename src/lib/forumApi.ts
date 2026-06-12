@@ -138,11 +138,31 @@ export async function forumCreatePost(params: {
   return data.postId
 }
 
-export async function forumDeletePost(postId: string, moderatorKey: string): Promise<void> {
+export async function forumDeletePost(params: {
+  postId: string
+  authorName?: string
+  moderatorKey?: string
+}): Promise<{ threadDeleted?: boolean }> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
     headers: forumHeaders(),
-    body: JSON.stringify({ action: 'delete_post', postId, moderatorKey }),
+    body: JSON.stringify({ action: 'delete_post', ...params }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumUpdatePost(params: {
+  postId: string
+  body: string
+  authorName: string
+  songId?: string | null
+  moderatorKey?: string
+}): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeaders(),
+    body: JSON.stringify({ action: 'update_post', ...params }),
   })
 
   await parseResponse(response)

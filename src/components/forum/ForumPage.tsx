@@ -287,6 +287,12 @@ export function ForumPage() {
                 setActiveBoardId(boardId)
                 void loadStructure()
               }}
+              onThreadDeleted={() => {
+                setThreadDetail(null)
+                setPosts([])
+                setActiveThreadId(null)
+                if (activeBoardId) void loadBoard(activeBoardId)
+              }}
               moderatorKey={moderatorUnlocked ? moderatorKey : undefined}
             />
           )}
