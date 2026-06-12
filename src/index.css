@@ -104,3 +104,25 @@ audio {
   }
 }
 
+.scrollbar-dark {
+  scrollbar-color: rgb(64 64 64) rgb(23 23 23);
+  scrollbar-width: thin;
+}
+
+.scrollbar-dark::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: rgb(23 23 23);
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgb(64 64 64);
+  border-radius: 9999px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgb(82 82 82);
+}
+

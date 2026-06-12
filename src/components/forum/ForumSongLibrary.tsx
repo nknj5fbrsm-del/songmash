@@ -86,7 +86,7 @@ export function ForumSongLibrary({
         )}
       </div>
 
-      <ul className="max-h-[min(50vh,420px)] flex-1 overflow-y-auto p-2">
+      <ul className="scrollbar-dark max-h-[min(50vh,420px)] flex-1 overflow-y-auto p-2">
         {filtered.length === 0 ? (
           <li className="px-2 py-6 text-center text-sm text-neutral-500">Keine Songs gefunden.</li>
         ) : (
