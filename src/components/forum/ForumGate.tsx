@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Loader2, Lock } from 'lucide-react'
+import { buildForumPasswordRequestMailto } from '../../lib/buildForumPasswordRequestMailto'
 import { ForumApiError, forumLogin } from '../../lib/forumApi'
 
 interface ForumGateProps {
@@ -57,6 +58,18 @@ export function ForumGate({ onSuccess }: ForumGateProps) {
           Betreten
         </button>
       </form>
+
+      <p className="mt-6 text-center text-sm leading-relaxed text-neutral-500">
+        Hast du schon ein Passwort? Oben eingeben und betreten. Noch keins? Wenn du mindestens
+        einen Song auf SongMash eingereicht hast (mit Künstlernamen), kannst du es per{' '}
+        <a
+          href={buildForumPasswordRequestMailto()}
+          className="text-lime-400/90 hover:text-lime-300"
+        >
+          E-Mail anfragen
+        </a>{' '}
+        (Kontakt wie im Impressum).
+      </p>
     </div>
   )
 }
