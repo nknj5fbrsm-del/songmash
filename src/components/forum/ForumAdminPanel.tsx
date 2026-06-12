@@ -1,6 +1,13 @@
 import { useState } from 'react'
-import { ChevronDown, Settings, Trash2 } from 'lucide-react'
-import { ForumApiError, forumAdminDeleteBoard, forumAdminDeleteCategory, forumAdminUpsertBoard, forumAdminUpsertCategory } from '../../lib/forumApi'
+import { ChevronDown, Download, Loader2, Settings, Trash2 } from 'lucide-react'
+import {
+  ForumApiError,
+  forumAdminDeleteBoard,
+  forumAdminDeleteCategory,
+  forumAdminDownloadBackup,
+  forumAdminUpsertBoard,
+  forumAdminUpsertCategory,
+} from '../../lib/forumApi'
 import type { ForumCategory } from '../../types/forum'
 
 interface ForumAdminPanelProps {
@@ -15,6 +22,7 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
   const [catName, setCatName] = useState('')
   const [boardName, setBoardName] = useState('')
   const [boardCategoryId, setBoardCategoryId] = useState(categories[0]?.id ?? '')
+  const [backupLoading, setBackupLoading] = useState(false)
 
   const run = async (fn: () => Promise<void>) => {
     setError('')
@@ -42,6 +50,37 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
 
       {open && (
         <div className="space-y-4 border-t border-amber-500/15 px-4 py-4">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+            <p className="mb-2 text-sm text-neutral-400">
+              Vollständige Sicherung als JSON-Datei (Kategorien, Themen, Beiträge).
+            </p>
+            <button
+              type="button"
+              disabled={backupLoading}
+              onClick={async () => {
+                setError('')
+                setBackupLoading(true)
+                try {
+                  await forumAdminDownloadBackup(moderatorKey)
+                } catch (err) {
+                  setError(
+                    err instanceof ForumApiError ? err.message : 'Backup fehlgeschlagen.',
+                  )
+                } finally {
+                  setBackupLoading(false)
+                }
+              }}
+              className="btn-secondary !py-2 text-sm"
+            >
+              {backupLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Forum sichern
+            </button>
+          </div>
+
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"

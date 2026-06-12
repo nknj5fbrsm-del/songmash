@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
         return await handleAdminDeleteBoard(supabase, body, req)
       case 'admin_move_thread':
         return await handleAdminMoveThread(supabase, body)
+      case 'admin_export_forum':
+        return await handleAdminExportForum(supabase, body)
       default:
         return json({ error: 'Unbekannte Aktion.' }, 400)
     }
@@ -500,6 +502,68 @@ async function handleAdminDeleteBoard(
   if (error) throw new Error(error.message)
 
   return json({ ok: true })
+}
+
+async function handleAdminExportForum(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+  requireModerator(body)
+
+  const [
+    { data: categories, error: catError },
+    { data: boards, error: boardError },
+    { data: threads, error: threadError },
+    { data: posts, error: postError },
+  ] = await Promise.all([
+    supabase.from('forum_categories').select('*').order('sort_order', { ascending: true }),
+    supabase.from('forum_boards').select('*').order('sort_order', { ascending: true }),
+    supabase.from('forum_threads').select('*').order('created_at', { ascending: true }),
+    supabase.from('forum_posts').select('*').order('created_at', { ascending: true }),
+  ])
+
+  if (catError) throw new Error(catError.message)
+  if (boardError) throw new Error(boardError.message)
+  if (threadError) throw new Error(threadError.message)
+  if (postError) throw new Error(postError.message)
+
+  return json({
+    backup: {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      categories: (categories ?? []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description ?? undefined,
+        sortOrder: c.sort_order,
+        createdAt: c.created_at,
+      })),
+      boards: (boards ?? []).map((b) => ({
+        id: b.id,
+        categoryId: b.category_id,
+        name: b.name,
+        description: b.description ?? undefined,
+        sortOrder: b.sort_order,
+        createdAt: b.created_at,
+      })),
+      threads: (threads ?? []).map((t) => ({
+        id: t.id,
+        boardId: t.board_id,
+        title: t.title,
+        authorName: t.author_name,
+        songId: t.song_id ?? undefined,
+        isPinned: t.is_pinned,
+        isLocked: t.is_locked,
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
+      })),
+      posts: (posts ?? []).map((p) => ({
+        id: p.id,
+        threadId: p.thread_id,
+        authorName: p.author_name,
+        body: p.body,
+        songId: p.song_id ?? undefined,
+        createdAt: p.created_at,
+      })),
+    },
+  })
 }
 
 async function handleAdminMoveThread(supabase: ReturnType<typeof createClient>, body: ActionBody) {

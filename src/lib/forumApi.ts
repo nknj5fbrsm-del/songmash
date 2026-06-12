@@ -206,6 +206,65 @@ export async function forumAdminDeleteBoard(boardId: string, moderatorKey: strin
   await parseResponse(response)
 }
 
+export type ForumBackup = {
+  version: number
+  exportedAt: string
+  categories: Array<{
+    id: string
+    name: string
+    description?: string
+    sortOrder: number
+    createdAt: string
+  }>
+  boards: Array<{
+    id: string
+    categoryId: string
+    name: string
+    description?: string
+    sortOrder: number
+    createdAt: string
+  }>
+  threads: Array<{
+    id: string
+    boardId: string
+    title: string
+    authorName: string
+    songId?: string
+    isPinned: boolean
+    isLocked: boolean
+    createdAt: string
+    updatedAt: string
+  }>
+  posts: Array<{
+    id: string
+    threadId: string
+    authorName: string
+    body: string
+    songId?: string
+    createdAt: string
+  }>
+}
+
+export async function forumAdminDownloadBackup(moderatorKey: string): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeaders(),
+    body: JSON.stringify({ action: 'admin_export_forum', moderatorKey }),
+  })
+
+  const data = await parseResponse<{ backup: ForumBackup }>(response)
+  const stamp = new Date().toISOString().slice(0, 10)
+  const blob = new Blob([JSON.stringify(data.backup, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `songmash-forum-backup-${stamp}.json`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function forumAdminMoveThread(
   threadId: string,
   boardId: string,

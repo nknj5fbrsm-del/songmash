@@ -306,7 +306,9 @@ supabase db push
 npx supabase functions deploy forum-auth forum-api --project-ref cwymmgfstfkgaiatbsev
 ```
 
-Nach dem Deploy: Tab **Forum** in der App → Passwort eingeben → Anzeigename wählen.
+Nach dem Deploy: Footer **Forum** → Passwort eingeben → Anzeigename wählen.
+
+**Forum-Backup:** In der Forum-Verwaltung (als Moderator) → **Forum sichern** lädt eine JSON-Datei mit dem gesamten Inhalt.
 
 ---
 
