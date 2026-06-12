@@ -46,7 +46,9 @@ export function ForumPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  )
   const [pendingSong, setPendingSong] = useState<Song | null>(null)
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
@@ -191,14 +193,16 @@ export function ForumPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setLibraryOpen((v) => !v)}
-            className="btn-secondary !py-2 lg:hidden"
-          >
-            <Library className="h-4 w-4" />
-            Bibliothek
-          </button>
+          {!libraryOpen && (
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              className="btn-secondary !py-2"
+            >
+              <Library className="h-4 w-4" />
+              Bibliothek
+            </button>
+          )}
           <button type="button" onClick={handleLogout} className="btn-secondary !py-2">
             <LogOut className="h-4 w-4" />
             Abmelden
@@ -209,7 +213,7 @@ export function ForumPage() {
       {error && <p className="alert-error mb-4 text-sm">{error}</p>}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className={`${libraryOpen ? 'block' : 'hidden'} lg:block lg:w-72 lg:shrink-0`}>
+        <div className={`${libraryOpen ? 'block' : 'hidden'} lg:w-72 lg:shrink-0`}>
           <ForumSongLibrary
             selectedSongId={pendingSong?.id}
             onSelectSong={handleSelectSong}
