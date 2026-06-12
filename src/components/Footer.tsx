@@ -2,7 +2,9 @@ import { Shield } from 'lucide-react'
 
 interface FooterProps {
   showModeration?: boolean
+  padForMobileVoteDock?: boolean
   onModeration?: () => void
+  onForum?: () => void
   onImpressum?: () => void
   onDatenschutz?: () => void
   onRemoveSong?: () => void
@@ -11,59 +13,44 @@ interface FooterProps {
 
 export function Footer({
   showModeration,
+  padForMobileVoteDock,
   onModeration,
+  onForum,
   onImpressum,
   onDatenschutz,
   onRemoveSong,
   onReportInfo,
 }: FooterProps) {
+  const links = [
+    onImpressum && { label: 'Impressum', onClick: onImpressum },
+    onDatenschutz && { label: 'Datenschutz', onClick: onDatenschutz },
+    onRemoveSong && { label: 'Song entfernen', onClick: onRemoveSong },
+    onReportInfo && { label: 'Regelverstoß melden', onClick: onReportInfo },
+    onForum && { label: 'Forum', onClick: onForum },
+  ].filter(Boolean) as { label: string; onClick: () => void }[]
+
   return (
-    <footer className="mt-auto border-t border-neutral-800/60 py-6">
+    <footer
+      className={`mt-auto border-t border-neutral-800/60 py-6 ${
+        padForMobileVoteDock ? 'footer-mobile-vote-dock' : ''
+      }`}
+    >
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 text-center text-xs text-neutral-600">
         <p>SongMash · Community-Voting für KI-Musik</p>
-        {(onImpressum || onDatenschutz || onRemoveSong || onReportInfo) && (
+        {links.length > 0 && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            {onImpressum && (
-              <button
-                type="button"
-                onClick={onImpressum}
-                className="text-neutral-600 transition-colors hover:text-neutral-400"
-              >
-                Impressum
-              </button>
-            )}
-            {onImpressum && (onDatenschutz || onRemoveSong || onReportInfo) && (
-              <span aria-hidden="true">·</span>
-            )}
-            {onDatenschutz && (
-              <button
-                type="button"
-                onClick={onDatenschutz}
-                className="text-neutral-600 transition-colors hover:text-neutral-400"
-              >
-                Datenschutz
-              </button>
-            )}
-            {onDatenschutz && (onRemoveSong || onReportInfo) && <span aria-hidden="true">·</span>}
-            {onRemoveSong && (
-              <button
-                type="button"
-                onClick={onRemoveSong}
-                className="text-neutral-600 transition-colors hover:text-neutral-400"
-              >
-                Song entfernen
-              </button>
-            )}
-            {onRemoveSong && onReportInfo && <span aria-hidden="true">·</span>}
-            {onReportInfo && (
-              <button
-                type="button"
-                onClick={onReportInfo}
-                className="text-neutral-600 transition-colors hover:text-neutral-400"
-              >
-                Regelverstoß melden
-              </button>
-            )}
+            {links.map((link, index) => (
+              <span key={link.label} className="contents">
+                {index > 0 && <span aria-hidden="true">·</span>}
+                <button
+                  type="button"
+                  onClick={link.onClick}
+                  className="text-neutral-600 transition-colors hover:text-neutral-400"
+                >
+                  {link.label}
+                </button>
+              </span>
+            ))}
           </div>
         )}
         {showModeration && onModeration && (

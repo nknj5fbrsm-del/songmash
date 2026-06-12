@@ -72,6 +72,13 @@ audio {
   @apply bg-lime-400 text-neutral-950 shadow-lg shadow-lime-400/15 hover:text-neutral-950;
 }
 
+/* Voting: Footer-Inhalt auf Mobile oberhalb der festen Abstimmen-Leiste */
+@media (max-width: 1023px) {
+  .footer-mobile-vote-dock {
+    padding-bottom: calc(1.5rem + 13rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .leaderboard-toolbar > :first-child {
   flex: 1 1 0%;
   min-width: 0;

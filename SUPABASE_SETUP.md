@@ -285,7 +285,32 @@ Ohne `VITE_TURNSTILE_SITE_KEY` bleibt die Checkbox ausgeblendet (nur für lokale
 
 ---
 
-## 12. Nächste Schritte (optional)
+## 12. Community-Forum
+
+**Migration:**
+
+```bash
+supabase db push
+```
+
+**Supabase Edge Function Secrets:**
+
+| Name | Wert |
+|------|------|
+| `FORUM_PASSWORD` | Gemeinsames Forum-Passwort (nur serverseitig — **nicht** als `VITE_*`) |
+| `MODERATOR_KEY` | Bereits für Moderation — wird für Forum-Verwaltung (Kategorien) genutzt |
+
+**Deploy:**
+
+```bash
+npx supabase functions deploy forum-auth forum-api --project-ref cwymmgfstfkgaiatbsev
+```
+
+Nach dem Deploy: Tab **Forum** in der App → Passwort eingeben → Anzeigename wählen.
+
+---
+
+## 13. Nächste Schritte (optional)
 
 - **Auth** aktivieren → nur eingeloggte User dürfen Songs einreichen
 - **Elo serverseitig** berechnen (Edge Function / DB Trigger)

@@ -7,6 +7,7 @@ export type Page =
   | 'match'
   | 'leaderboard'
   | 'submit'
+  | 'forum'
   | 'moderation'
   | 'impressum'
   | 'datenschutz'

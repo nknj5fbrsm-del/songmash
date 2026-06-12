@@ -12,6 +12,7 @@ import { ModerationPage } from './components/ModerationPage'
 import { ImpressumPage } from './components/ImpressumPage'
 import { DatenschutzPage } from './components/DatenschutzPage'
 import { RemoveSongPage } from './components/RemoveSongPage'
+import { ForumPage } from './components/forum/ForumPage'
 import { ReportContentInfoModal } from './components/ReportContentInfoModal'
 import { useModerator } from './hooks/useModerator'
 
@@ -46,6 +47,7 @@ function AppContent() {
 
         {page === 'match' && <MatchPage />}
         {page === 'leaderboard' && <LeaderboardPage />}
+        {page === 'forum' && <ForumPage />}
         {isTurnstileEnabled() ? (
           <div
             className={
@@ -68,8 +70,10 @@ function AppContent() {
         {page === 'remove-song' && <RemoveSongPage onBack={() => setPage('match')} />}
       </main>
       <Footer
+        padForMobileVoteDock={page === 'match'}
         showModeration={isConfigured}
         onModeration={() => setPage('moderation')}
+        onForum={() => setPage('forum')}
         onImpressum={() => setPage('impressum')}
         onDatenschutz={() => setPage('datenschutz')}
         onRemoveSong={() => setPage('remove-song')}

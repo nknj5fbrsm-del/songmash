@@ -46,3 +46,9 @@ verify_jwt = false
 
 [functions.migrate-assets-to-r2]
 verify_jwt = false
+
+[functions.forum-auth]
+verify_jwt = false
+
+[functions.forum-api]
+verify_jwt = false
