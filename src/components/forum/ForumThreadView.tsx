@@ -9,8 +9,10 @@ import {
   forumUpdatePost,
 } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
-import type { ForumCategory, ForumPost, ForumThreadDetail } from '../../types/forum'
+import type { ForumCategory, ForumPendingAttachments, ForumPost, ForumThreadDetail } from '../../types/forum'
 import type { Song } from '../../types/song'
+import { ForumAttachmentDisplay } from './ForumAttachmentDisplay'
+import { ForumAttachmentPicker } from './ForumAttachmentPicker'
 import { ForumSongEmbed } from './ForumSongEmbed'
 
 interface ForumThreadViewProps {
@@ -45,6 +47,7 @@ export function ForumThreadView({
   moderatorKey,
 }: ForumThreadViewProps) {
   const [body, setBody] = useState('')
+  const [attachments, setAttachments] = useState<ForumPendingAttachments>({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -104,8 +107,11 @@ export function ForumThreadView({
         body: body.trim(),
         authorName: displayName,
         songId: pendingSong?.id,
+        imageUrl: attachments.imageUrl,
+        audioUrl: attachments.audioUrl,
       })
       setBody('')
+      setAttachments({})
       onClearPendingSong()
       onRefresh()
     } catch (err) {
@@ -340,6 +346,7 @@ export function ForumThreadView({
                   <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-neutral-300">
                     {post.body}
                   </p>
+                  <ForumAttachmentDisplay imageUrl={post.imageUrl} audioUrl={post.audioUrl} />
                   {song && (
                     <div className="mt-3">
                       <ForumSongEmbed song={song} compact />
@@ -374,6 +381,11 @@ export function ForumThreadView({
               </button>
             </div>
           )}
+          <ForumAttachmentPicker
+            attachments={attachments}
+            onChange={setAttachments}
+            disabled={loading}
+          />
           <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Antwort senden

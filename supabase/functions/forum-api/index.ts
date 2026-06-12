@@ -6,6 +6,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { normalizeForumAttachmentUrl, purgeForumAttachments } from '../_shared/forumAssets.ts'
 import { requireForumSession, verifyForumSession } from '../_shared/forumSession.ts'
 
 const corsHeaders = {
@@ -31,6 +32,8 @@ type ActionBody = {
   body?: string
   authorName?: string
   songId?: string
+  imageUrl?: string
+  audioUrl?: string
   name?: string
   description?: string
   sortOrder?: number
@@ -310,6 +313,8 @@ async function handleThread(supabase: ReturnType<typeof createClient>, threadId?
       authorName: p.author_name,
       body: p.body,
       songId: p.song_id ?? undefined,
+      imageUrl: p.image_url ?? undefined,
+      audioUrl: p.audio_url ?? undefined,
       createdAt: p.created_at,
     })),
   })
@@ -332,6 +337,9 @@ async function handleCreateThread(supabase: ReturnType<typeof createClient>, bod
   const songId = body.songId?.trim() || null
   if (songId) await assertSongExists(supabase, songId)
 
+  const imageUrl = normalizeForumAttachmentUrl(body.imageUrl)
+  const audioUrl = normalizeForumAttachmentUrl(body.audioUrl)
+
   const now = new Date().toISOString()
 
   const { data: thread, error: threadError } = await supabase
@@ -353,6 +361,8 @@ async function handleCreateThread(supabase: ReturnType<typeof createClient>, bod
     author_name: authorName,
     body: postBody,
     song_id: songId,
+    image_url: imageUrl,
+    audio_url: audioUrl,
   })
 
   if (postError) throw new Error(postError.message)
@@ -383,6 +393,9 @@ async function handleCreatePost(supabase: ReturnType<typeof createClient>, body:
   const songId = body.songId?.trim() || null
   if (songId) await assertSongExists(supabase, songId)
 
+  const imageUrl = normalizeForumAttachmentUrl(body.imageUrl)
+  const audioUrl = normalizeForumAttachmentUrl(body.audioUrl)
+
   const { data: post, error } = await supabase
     .from('forum_posts')
     .insert({
@@ -390,6 +403,8 @@ async function handleCreatePost(supabase: ReturnType<typeof createClient>, body:
       author_name: authorName,
       body: postBody,
       song_id: songId,
+      image_url: imageUrl,
+      audio_url: audioUrl,
     })
     .select('id')
     .single()
@@ -433,6 +448,7 @@ async function handleDeletePost(supabase: ReturnType<typeof createClient>, body:
   }
 
   if (isOnlyPost) {
+    await purgeForumAttachments(post)
     const { error: threadError } = await supabase
       .from('forum_threads')
       .delete()
@@ -441,6 +457,7 @@ async function handleDeletePost(supabase: ReturnType<typeof createClient>, body:
     return json({ ok: true, threadDeleted: true })
   }
 
+  await purgeForumAttachments(post)
   const { error } = await supabase.from('forum_posts').delete().eq('id', postId)
   if (error) throw new Error(error.message)
 
@@ -676,6 +693,8 @@ async function handleAdminExportForum(supabase: ReturnType<typeof createClient>,
         authorName: p.author_name,
         body: p.body,
         songId: p.song_id ?? undefined,
+        imageUrl: p.image_url ?? undefined,
+        audioUrl: p.audio_url ?? undefined,
         createdAt: p.created_at,
       })),
     },

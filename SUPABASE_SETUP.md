@@ -303,10 +303,14 @@ supabase db push
 **Deploy:**
 
 ```bash
-npx supabase functions deploy forum-auth forum-api --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy forum-auth forum-api forum-upload-presign --project-ref cwymmgfstfkgaiatbsev
 ```
 
+Migration für Forum-Anhänge (Bild/Audio): `supabase/migrations/20260612120000_forum_attachments.sql`
+
 Nach dem Deploy: Footer **Forum** → Passwort eingeben → Anzeigename wählen.
+
+**Forum-Anhänge:** Beim Erstellen eines Themas oder beim Antworten — Bild (max. 2 MB) oder Audio (max. 15 MB) hochladen, getrennt von SongMash. Limit: **3 Uploads pro Stunde** pro Forum-Session. Dateien liegen in R2 unter `forum/images/` bzw. `forum/audio/`.
 
 **Forum-Backup:** In der Forum-Verwaltung (als Moderator) → **Forum sichern** lädt eine JSON-Datei mit dem gesamten Inhalt.
 

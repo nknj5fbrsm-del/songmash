@@ -56,5 +56,12 @@ export interface ForumPost {
   authorName: string
   body: string
   songId?: string
+  imageUrl?: string
+  audioUrl?: string
   createdAt: string
+}
+
+export interface ForumPendingAttachments {
+  imageUrl?: string
+  audioUrl?: string
 }

@@ -36,7 +36,7 @@ function authHeaders(): Record<string, string> {
   return headers
 }
 
-function forumHeaders(): Record<string, string> {
+export function forumHeaders(): Record<string, string> {
   const session = readForumSession()
   if (!session) {
     throw new ForumApiError('Nicht angemeldet.', 401)
@@ -111,6 +111,8 @@ export async function forumCreateThread(params: {
   body: string
   authorName: string
   songId?: string
+  imageUrl?: string
+  audioUrl?: string
 }): Promise<string> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
@@ -127,6 +129,8 @@ export async function forumCreatePost(params: {
   body: string
   authorName: string
   songId?: string
+  imageUrl?: string
+  audioUrl?: string
 }): Promise<string> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
@@ -261,6 +265,8 @@ export type ForumBackup = {
     authorName: string
     body: string
     songId?: string
+    imageUrl?: string
+    audioUrl?: string
     createdAt: string
   }>
 }

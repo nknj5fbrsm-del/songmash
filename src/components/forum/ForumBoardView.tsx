@@ -3,8 +3,9 @@ import { Loader2, Plus } from 'lucide-react'
 import { ForumNavBar } from './ForumNavBar'
 import { ForumApiError, forumCreateThread } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
-import type { ForumBoardDetail, ForumThreadSummary } from '../../types/forum'
+import type { ForumBoardDetail, ForumPendingAttachments, ForumThreadSummary } from '../../types/forum'
 import type { Song } from '../../types/song'
+import { ForumAttachmentPicker } from './ForumAttachmentPicker'
 import { ForumSongEmbed } from './ForumSongEmbed'
 
 interface ForumBoardViewProps {
@@ -37,6 +38,7 @@ export function ForumBoardView({
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [attachments, setAttachments] = useState<ForumPendingAttachments>({})
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -49,9 +51,12 @@ export function ForumBoardView({
         body: body.trim(),
         authorName: displayName,
         songId: pendingSong?.id,
+        imageUrl: attachments.imageUrl,
+        audioUrl: attachments.audioUrl,
       })
       setTitle('')
       setBody('')
+      setAttachments({})
       setShowForm(false)
       onClearPendingSong()
       onCreated(threadId)
@@ -115,6 +120,11 @@ export function ForumBoardView({
               </button>
             </div>
           )}
+          <ForumAttachmentPicker
+            attachments={attachments}
+            onChange={setAttachments}
+            disabled={loading}
+          />
           {error && <p className="alert-error text-sm">{error}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={loading} className="btn-primary flex-1">
