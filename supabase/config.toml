@@ -55,3 +55,6 @@ verify_jwt = false
 
 [functions.forum-upload-presign]
 verify_jwt = false
+
+[functions.moderator-auth]
+verify_jwt = false

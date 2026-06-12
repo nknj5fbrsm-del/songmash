@@ -28,7 +28,7 @@ interface ForumThreadViewProps {
   onRefresh: () => void
   onMoved?: (boardId: string) => void
   onThreadDeleted?: () => void
-  moderatorKey?: string
+  moderatorUnlocked?: boolean
 }
 
 export function ForumThreadView({
@@ -44,7 +44,7 @@ export function ForumThreadView({
   onRefresh,
   onMoved,
   onThreadDeleted,
-  moderatorKey,
+  moderatorUnlocked,
 }: ForumThreadViewProps) {
   const [body, setBody] = useState('')
   const [attachments, setAttachments] = useState<ForumPendingAttachments>({})
@@ -77,7 +77,7 @@ export function ForumThreadView({
   }
 
   const handleMoveThread = async () => {
-    if (!moderatorKey || !moveBoardId) return
+    if (!moderatorUnlocked || !moveBoardId) return
     if (moveBoardId === thread.boardId) {
       setError('Bitte einen anderen Unterbereich wählen.')
       return
@@ -85,7 +85,7 @@ export function ForumThreadView({
     setMoveLoading(true)
     setError('')
     try {
-      const newBoardId = await forumAdminMoveThread(thread.id, moveBoardId, moderatorKey)
+      const newBoardId = await forumAdminMoveThread(thread.id, moveBoardId)
       setMoveOpen(false)
       onMoved?.(newBoardId)
       onRefresh()
@@ -122,7 +122,7 @@ export function ForumThreadView({
   }
 
   const canModifyPost = (post: ForumPost) =>
-    post.authorName === displayName || !!moderatorKey
+    post.authorName === displayName || !!moderatorUnlocked
 
   const startEdit = (post: ForumPost) => {
     setEditingPostId(post.id)
@@ -144,7 +144,6 @@ export function ForumThreadView({
         postId: post.id,
         body: editBody.trim(),
         authorName: displayName,
-        moderatorKey,
       })
       cancelEdit()
       onRefresh()
@@ -164,7 +163,6 @@ export function ForumThreadView({
       const result = await forumDeletePost({
         postId: post.id,
         authorName: displayName,
-        moderatorKey,
       })
       if (result.threadDeleted) {
         onThreadDeleted?.()
@@ -202,7 +200,7 @@ export function ForumThreadView({
         {thread.isLocked && (
           <p className="alert-error mt-3 text-sm">Dieses Thema ist geschlossen.</p>
         )}
-        {moderatorKey && (
+        {moderatorUnlocked && (
           <div className="mt-4">
             {!moveOpen ? (
               <button

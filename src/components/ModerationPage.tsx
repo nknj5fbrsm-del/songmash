@@ -12,6 +12,7 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
   const { songs, removeSong, storageMode } = useSongs()
   const [keyInput, setKeyInput] = useState('')
   const [authError, setAuthError] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
@@ -22,8 +23,8 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
         <Shield className="mx-auto mb-4 h-10 w-10 text-amber-400" />
         <h2 className="text-lg font-semibold text-neutral-100">Moderation nicht konfiguriert</h2>
         <p className="mt-2 text-sm text-neutral-400">
-          Setze <code className="text-amber-300">VITE_MODERATOR_KEY</code> in{' '}
-          <code className="text-amber-300">.env.local</code> und starte die App neu.
+          Supabase ist nicht eingerichtet. Moderator-Schlüssel wird nur serverseitig als{' '}
+          <code className="text-amber-300">MODERATOR_KEY</code> in Supabase Secrets gespeichert.
         </p>
         {onBack && (
           <button type="button" onClick={onBack} className="btn-secondary mt-6">
@@ -57,9 +58,12 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
           onSubmit={(e) => {
             e.preventDefault()
             setAuthError('')
-            if (!unlock(keyInput)) {
-              setAuthError('Ungültiger Schlüssel.')
-            }
+            void (async () => {
+              setAuthLoading(true)
+              const ok = await unlock(keyInput)
+              setAuthLoading(false)
+              if (!ok) setAuthError('Ungültiger Schlüssel.')
+            })()
           }}
           className="card space-y-4"
         >
@@ -74,8 +78,19 @@ export function ModerationPage({ onBack }: ModerationPageProps) {
             />
           </div>
           {authError && <p className="text-sm text-red-300">{authError}</p>}
-          <button type="submit" className="btn-primary w-full py-3 text-base">
-            Entsperren
+          <button
+            type="submit"
+            disabled={authLoading}
+            className="btn-primary w-full py-3 text-base disabled:opacity-60"
+          >
+            {authLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Prüfe …
+              </>
+            ) : (
+              'Entsperren'
+            )}
           </button>
         </form>
       </div>

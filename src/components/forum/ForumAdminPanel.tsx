@@ -12,11 +12,10 @@ import type { ForumCategory } from '../../types/forum'
 
 interface ForumAdminPanelProps {
   categories: ForumCategory[]
-  moderatorKey: string
   onChanged: () => void
 }
 
-export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAdminPanelProps) {
+export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const [catName, setCatName] = useState('')
@@ -61,7 +60,7 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
                 setError('')
                 setBackupLoading(true)
                 try {
-                  await forumAdminDownloadBackup(moderatorKey)
+                  await forumAdminDownloadBackup()
                 } catch (err) {
                   setError(
                     err instanceof ForumApiError ? err.message : 'Backup fehlgeschlagen.',
@@ -95,7 +94,6 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
                 run(async () => {
                   if (!catName.trim()) return
                   await forumAdminUpsertCategory({
-                    moderatorKey,
                     name: catName.trim(),
                   })
                   setCatName('')
@@ -132,7 +130,6 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
                 run(async () => {
                   if (!boardName.trim() || !boardCategoryId) return
                   await forumAdminUpsertBoard({
-                    moderatorKey,
                     categoryId: boardCategoryId,
                     name: boardName.trim(),
                   })
@@ -155,7 +152,7 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
                     onClick={() =>
                       run(async () => {
                         if (!window.confirm(`Kategorie „${cat.name}" wirklich löschen?`)) return
-                        await forumAdminDeleteCategory(cat.id, moderatorKey)
+                        await forumAdminDeleteCategory(cat.id)
                       })
                     }
                     className="text-neutral-600 hover:text-red-300"
@@ -174,7 +171,7 @@ export function ForumAdminPanel({ categories, moderatorKey, onChanged }: ForumAd
                           run(async () => {
                             if (!window.confirm(`Unterbereich „${board.name}" wirklich löschen?`))
                               return
-                            await forumAdminDeleteBoard(board.id, moderatorKey)
+                            await forumAdminDeleteBoard(board.id)
                           })
                         }
                         className="text-neutral-600 hover:text-red-300"

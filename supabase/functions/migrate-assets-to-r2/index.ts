@@ -3,16 +3,19 @@
  * Deploy: supabase functions deploy migrate-assets-to-r2
  * Secret: MODERATOR_KEY
  *
- * POST { dryRun?: boolean, limit?: number, moderatorKey: string }
+ * POST { dryRun?: boolean, limit?: number }
+ * Header: x-moderator-session
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseStoragePathFromUrl } from '../_shared/assetUrls.ts'
+import { requireModeratorRequest } from '../_shared/moderatorRequest.ts'
 import { uploadBytesToR2 } from '../_shared/r2.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-moderator-session',
 }
 
 type SongRow = {
@@ -54,20 +57,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    await requireModeratorRequest(req)
+
     const body = (await req.json()) as {
       dryRun?: boolean
       limit?: number
-      moderatorKey?: string
-    }
-
-    const expectedKey = Deno.env.get('MODERATOR_KEY')?.trim()
-    if (!expectedKey) {
-      return json({ error: 'MODERATOR_KEY nicht konfiguriert.' }, 500)
-    }
-
-    const provided = body.moderatorKey?.trim()
-    if (!provided || provided !== expectedKey) {
-      return json({ error: 'Ungültiger Moderator-Schlüssel.' }, 403)
     }
 
     const dryRun = body.dryRun === true

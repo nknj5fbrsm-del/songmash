@@ -1,4 +1,5 @@
 import { castVoteViaApi, type CastVoteResult } from './castVoteApi'
+import { hasModeratorSession } from './moderatorStorage'
 import type { CastVoteParams } from './repository'
 import type { Song, VoteRecord } from '../types/song'
 import { applyEloRatings, recalculateEloRatings } from './recalculateElo'
@@ -245,11 +246,9 @@ export const supabaseSongRepository = {
     if (fetchError) throw new Error(fetchError.message)
 
     const song = rowToSong(row as SongRow)
-    const moderatorKey = import.meta.env.VITE_MODERATOR_KEY as string | undefined
-
-    if (moderatorKey) {
+    if (hasModeratorSession()) {
       try {
-        await purgeHostedAssets(song.audioUrl, song.coverUrl, moderatorKey)
+        await purgeHostedAssets(song.audioUrl, song.coverUrl)
       } catch (err) {
         const detail = err instanceof Error ? err.message : 'Unbekannter Fehler'
         throw new Error(`Dateien konnten nicht gelöscht werden — Song bleibt bestehen. (${detail})`)

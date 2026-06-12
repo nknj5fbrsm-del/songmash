@@ -1,29 +1,30 @@
 import { useCallback, useState } from 'react'
-
-const SESSION_KEY = 'songmash:moderator'
+import { moderatorLogin } from '../lib/moderatorAuthApi'
+import { clearModeratorSession, hasModeratorSession } from '../lib/moderatorStorage'
+import { isSupabaseConfigured } from '../lib/supabaseClient'
 
 export function useModerator() {
-  const [unlocked, setUnlocked] = useState(
-    () => sessionStorage.getItem(SESSION_KEY) === '1',
-  )
+  const [unlocked, setUnlocked] = useState(() => hasModeratorSession())
 
-  const moderatorKey = import.meta.env.VITE_MODERATOR_KEY as string | undefined
-  const isConfigured = Boolean(moderatorKey)
-
-  const unlock = useCallback(
-    (key: string) => {
-      if (!moderatorKey || key !== moderatorKey) return false
-      sessionStorage.setItem(SESSION_KEY, '1')
+  const unlock = useCallback(async (key: string) => {
+    try {
+      await moderatorLogin(key)
       setUnlocked(true)
       return true
-    },
-    [moderatorKey],
-  )
+    } catch {
+      return false
+    }
+  }, [])
 
   const lock = useCallback(() => {
-    sessionStorage.removeItem(SESSION_KEY)
+    clearModeratorSession()
     setUnlocked(false)
   }, [])
 
-  return { unlocked, unlock, lock, isConfigured }
+  return {
+    unlocked,
+    unlock,
+    lock,
+    isConfigured: isSupabaseConfigured(),
+  }
 }

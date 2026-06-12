@@ -6,6 +6,7 @@ import type {
   ForumThreadSummary,
 } from '../types/forum'
 import { clearForumSession, readForumSession, writeForumSession } from './forumStorage'
+import { readModeratorSession } from './moderatorStorage'
 import { isSupabaseConfigured } from './supabaseClient'
 
 export class ForumApiError extends Error {
@@ -42,6 +43,24 @@ export function forumHeaders(): Record<string, string> {
     throw new ForumApiError('Nicht angemeldet.', 401)
   }
   return { ...authHeaders(), 'x-forum-session': session }
+}
+
+function forumModeratorHeaders(): Record<string, string> {
+  const headers = forumHeaders()
+  const mod = readModeratorSession()
+  if (!mod) {
+    throw new ForumApiError('Moderator nicht angemeldet.', 403)
+  }
+  return { ...headers, 'x-moderator-session': mod }
+}
+
+function forumHeadersWithOptionalModerator(): Record<string, string> {
+  const headers = forumHeaders()
+  const mod = readModeratorSession()
+  if (mod) {
+    headers['x-moderator-session'] = mod
+  }
+  return headers
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -145,11 +164,10 @@ export async function forumCreatePost(params: {
 export async function forumDeletePost(params: {
   postId: string
   authorName?: string
-  moderatorKey?: string
 }): Promise<{ threadDeleted?: boolean }> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
+    headers: forumHeadersWithOptionalModerator(),
     body: JSON.stringify({ action: 'delete_post', ...params }),
   })
 
@@ -161,11 +179,10 @@ export async function forumUpdatePost(params: {
   body: string
   authorName: string
   songId?: string | null
-  moderatorKey?: string
 }): Promise<void> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
+    headers: forumHeadersWithOptionalModerator(),
     body: JSON.stringify({ action: 'update_post', ...params }),
   })
 
@@ -173,7 +190,6 @@ export async function forumUpdatePost(params: {
 }
 
 export async function forumAdminUpsertCategory(params: {
-  moderatorKey: string
   categoryId?: string
   name: string
   description?: string
@@ -181,7 +197,7 @@ export async function forumAdminUpsertCategory(params: {
 }): Promise<string> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
+    headers: forumModeratorHeaders(),
     body: JSON.stringify({ action: 'admin_upsert_category', ...params }),
   })
 
@@ -189,21 +205,17 @@ export async function forumAdminUpsertCategory(params: {
   return data.categoryId
 }
 
-export async function forumAdminDeleteCategory(
-  categoryId: string,
-  moderatorKey: string,
-): Promise<void> {
+export async function forumAdminDeleteCategory(categoryId: string): Promise<void> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
-    body: JSON.stringify({ action: 'admin_delete_category', categoryId, moderatorKey }),
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_delete_category', categoryId }),
   })
 
   await parseResponse(response)
 }
 
 export async function forumAdminUpsertBoard(params: {
-  moderatorKey: string
   boardId?: string
   categoryId: string
   name: string
@@ -212,7 +224,7 @@ export async function forumAdminUpsertBoard(params: {
 }): Promise<string> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
+    headers: forumModeratorHeaders(),
     body: JSON.stringify({ action: 'admin_upsert_board', ...params }),
   })
 
@@ -220,11 +232,11 @@ export async function forumAdminUpsertBoard(params: {
   return data.boardId
 }
 
-export async function forumAdminDeleteBoard(boardId: string, moderatorKey: string): Promise<void> {
+export async function forumAdminDeleteBoard(boardId: string): Promise<void> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
-    body: JSON.stringify({ action: 'admin_delete_board', boardId, moderatorKey }),
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_delete_board', boardId }),
   })
 
   await parseResponse(response)
@@ -271,11 +283,11 @@ export type ForumBackup = {
   }>
 }
 
-export async function forumAdminDownloadBackup(moderatorKey: string): Promise<void> {
+export async function forumAdminDownloadBackup(): Promise<void> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
-    body: JSON.stringify({ action: 'admin_export_forum', moderatorKey }),
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_export_forum' }),
   })
 
   const data = await parseResponse<{ backup: ForumBackup }>(response)
@@ -291,15 +303,11 @@ export async function forumAdminDownloadBackup(moderatorKey: string): Promise<vo
   URL.revokeObjectURL(url)
 }
 
-export async function forumAdminMoveThread(
-  threadId: string,
-  boardId: string,
-  moderatorKey: string,
-): Promise<string> {
+export async function forumAdminMoveThread(threadId: string, boardId: string): Promise<string> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
-    headers: forumHeaders(),
-    body: JSON.stringify({ action: 'admin_move_thread', threadId, boardId, moderatorKey }),
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_move_thread', threadId, boardId }),
   })
 
   const data = await parseResponse<{ boardId: string }>(response)

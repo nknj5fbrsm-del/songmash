@@ -1,3 +1,4 @@
+import { moderatorHeaders } from './moderatorAuthApi'
 import { isSupabaseConfigured } from './supabaseClient'
 
 function getPurgeUrl(): string | null {
@@ -9,26 +10,17 @@ function getPurgeUrl(): string | null {
 export async function purgeHostedAssets(
   audioUrl: string,
   coverUrl: string | undefined,
-  moderatorKey: string,
 ): Promise<void> {
   const url = getPurgeUrl()
   if (!url) return
 
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (anonKey) {
-    headers.Authorization = `Bearer ${anonKey}`
-    headers.apikey = anonKey
-  }
-
   const res = await fetch(url, {
     method: 'POST',
-    headers,
+    headers: moderatorHeaders(),
     signal: AbortSignal.timeout(45_000),
     body: JSON.stringify({
       audioUrl,
       coverUrl: coverUrl ?? null,
-      moderatorKey,
     }),
   })
 

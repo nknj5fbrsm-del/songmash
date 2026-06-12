@@ -1,6 +1,6 @@
 /**
  * Forum-API (Kategorien, Threads, Beiträge). Erfordert gültige Forum-Session.
- * Admin-Aktionen zusätzlich MODERATOR_KEY.
+ * Admin-Aktionen zusätzlich Moderator-Session (x-moderator-session).
  * Deploy: supabase functions deploy forum-api
  * Secrets: FORUM_PASSWORD, MODERATOR_KEY
  */
@@ -8,11 +8,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { normalizeForumAttachmentUrl, purgeForumAttachments } from '../_shared/forumAssets.ts'
 import { requireForumSession, verifyForumSession } from '../_shared/forumSession.ts'
+import { isModeratorRequest, requireModeratorRequest } from '../_shared/moderatorRequest.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-forum-session',
+    'authorization, x-client-info, apikey, content-type, x-forum-session, x-moderator-session',
 }
 
 const MAX_AUTHOR = 32
@@ -23,7 +24,6 @@ const MAX_DESC = 250
 
 type ActionBody = {
   action?: string
-  moderatorKey?: string
   boardId?: string
   threadId?: string
   postId?: string
@@ -80,9 +80,9 @@ Deno.serve(async (req) => {
       case 'create_post':
         return await handleCreatePost(supabase, body)
       case 'delete_post':
-        return await handleDeletePost(supabase, body)
+        return await handleDeletePost(supabase, body, req)
       case 'update_post':
-        return await handleUpdatePost(supabase, body)
+        return await handleUpdatePost(supabase, body, req)
       case 'admin_upsert_category':
         return await handleAdminUpsertCategory(supabase, body, req)
       case 'admin_delete_category':
@@ -92,9 +92,9 @@ Deno.serve(async (req) => {
       case 'admin_delete_board':
         return await handleAdminDeleteBoard(supabase, body, req)
       case 'admin_move_thread':
-        return await handleAdminMoveThread(supabase, body)
+        return await handleAdminMoveThread(supabase, body, req)
       case 'admin_export_forum':
-        return await handleAdminExportForum(supabase, body)
+        return await handleAdminExportForum(supabase, req)
       default:
         return json({ error: 'Unbekannte Aktion.' }, 400)
     }
@@ -117,18 +117,6 @@ function trimAuthor(name: string | undefined): string {
     throw new Error(`Anzeigename muss 2–${MAX_AUTHOR} Zeichen haben.`)
   }
   return trimmed
-}
-
-function isModerator(body: ActionBody): boolean {
-  const expected = Deno.env.get('MODERATOR_KEY')?.trim()
-  const provided = body.moderatorKey?.trim()
-  return !!(expected && provided && provided === expected)
-}
-
-function requireModerator(body: ActionBody): void {
-  if (!isModerator(body)) {
-    throw new Error('Moderator-Schlüssel ungültig.')
-  }
 }
 
 async function loadPostForAction(
@@ -419,12 +407,16 @@ async function handleCreatePost(supabase: ReturnType<typeof createClient>, body:
   return json({ postId: post.id })
 }
 
-async function handleDeletePost(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+async function handleDeletePost(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
   const postId = body.postId?.trim()
   if (!postId) throw new Error('postId fehlt.')
 
   const post = await loadPostForAction(supabase, postId)
-  const asModerator = isModerator(body)
+  const asModerator = await isModeratorRequest(req)
   if (!asModerator) {
     assertOwnPost(body, post.author_name)
   }
@@ -469,7 +461,11 @@ async function handleDeletePost(supabase: ReturnType<typeof createClient>, body:
   return json({ ok: true })
 }
 
-async function handleUpdatePost(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+async function handleUpdatePost(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
   const postId = body.postId?.trim()
   const postBody = body.body?.trim() ?? ''
   if (!postId) throw new Error('postId fehlt.')
@@ -478,7 +474,7 @@ async function handleUpdatePost(supabase: ReturnType<typeof createClient>, body:
   }
 
   const post = await loadPostForAction(supabase, postId)
-  if (!isModerator(body)) {
+  if (!(await isModeratorRequest(req))) {
     assertOwnPost(body, post.author_name)
   }
 
@@ -527,9 +523,9 @@ async function handleUpdatePost(supabase: ReturnType<typeof createClient>, body:
 async function handleAdminUpsertCategory(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
-  _req: Request,
+  req: Request,
 ) {
-  requireModerator(body)
+  await requireModeratorRequest(req)
 
   const name = body.name?.trim() ?? ''
   const description = body.description?.trim().slice(0, MAX_DESC) || null
@@ -563,9 +559,9 @@ async function handleAdminUpsertCategory(
 async function handleAdminDeleteCategory(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
-  _req: Request,
+  req: Request,
 ) {
-  requireModerator(body)
+  await requireModeratorRequest(req)
   const categoryId = body.categoryId?.trim()
   if (!categoryId) throw new Error('categoryId fehlt.')
 
@@ -578,9 +574,9 @@ async function handleAdminDeleteCategory(
 async function handleAdminUpsertBoard(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
-  _req: Request,
+  req: Request,
 ) {
-  requireModerator(body)
+  await requireModeratorRequest(req)
 
   const categoryId = body.categoryId?.trim()
   const name = body.name?.trim() ?? ''
@@ -625,9 +621,9 @@ async function handleAdminUpsertBoard(
 async function handleAdminDeleteBoard(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
-  _req: Request,
+  req: Request,
 ) {
-  requireModerator(body)
+  await requireModeratorRequest(req)
   const boardId = body.boardId?.trim()
   if (!boardId) throw new Error('boardId fehlt.')
 
@@ -637,8 +633,8 @@ async function handleAdminDeleteBoard(
   return json({ ok: true })
 }
 
-async function handleAdminExportForum(supabase: ReturnType<typeof createClient>, body: ActionBody) {
-  requireModerator(body)
+async function handleAdminExportForum(supabase: ReturnType<typeof createClient>, req: Request) {
+  await requireModeratorRequest(req)
 
   const [
     { data: categories, error: catError },
@@ -701,8 +697,12 @@ async function handleAdminExportForum(supabase: ReturnType<typeof createClient>,
   })
 }
 
-async function handleAdminMoveThread(supabase: ReturnType<typeof createClient>, body: ActionBody) {
-  requireModerator(body)
+async function handleAdminMoveThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
 
   const threadId = body.threadId?.trim()
   const boardId = body.boardId?.trim()

@@ -69,10 +69,16 @@ Im **SQL Editor** auch ausführen:
 
 Erlaubt Löschen von Songs und Storage-Dateien über die App.
 
-In `.env.local`:
+In `.env.local` ist **kein** Moderator-Key nötig. Stattdessen in Supabase Secrets:
 
 ```env
-VITE_MODERATOR_KEY=dein-geheimer-admin-key
+MODERATOR_KEY=dein-geheimer-admin-key
+```
+
+Edge Function deployen:
+
+```bash
+npx supabase functions deploy moderator-auth --project-ref cwymmgfstfkgaiatbsev
 ```
 
 App → **Moderation** → Key eingeben → Song entfernen.  
@@ -99,7 +105,7 @@ Neue Uploads und Suno-Imports landen in **Cloudflare R2** statt Supabase Storage
 | `R2_S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
 | `R2_ACCESS_KEY_ID` | S3-kompatibler Access Key (vom R2 API-Token) |
 | `R2_SECRET_ACCESS_KEY` | S3-kompatibles Secret |
-| `MODERATOR_KEY` | gleicher Wert wie `VITE_MODERATOR_KEY` (für Moderation-Asset-Löschung) |
+| `MODERATOR_KEY` | Moderator-Login (Edge Function `moderator-auth`) und geschützte Admin-Aktionen |
 
 ### 7.2 Client / CI
 
@@ -124,7 +130,7 @@ Browser-Uploads nutzen `r2-presign` (Presigned PUT direkt nach R2).
 
 ```bash
 npx supabase login
-npx supabase functions deploy r2-presign import-audio delete-song-by-token purge-song-assets week-cycle --project-ref cwymmgfstfkgaiatbsev
+npx supabase functions deploy r2-presign import-audio delete-song-by-token purge-song-assets moderator-auth week-cycle --project-ref cwymmgfstfkgaiatbsev
 ```
 
 **Ohne `r2-presign`** schlagen Datei-Uploads in Production fehl.
@@ -147,7 +153,8 @@ Dry-Run (keine Änderungen):
 curl -X POST 'https://cwymmgfstfkgaiatbsev.supabase.co/functions/v1/migrate-assets-to-r2' \
   -H 'Authorization: Bearer DEIN_ANON_KEY' \
   -H 'Content-Type: application/json' \
-  -d '{"dryRun":true,"limit":10,"moderatorKey":"DEIN_MODERATOR_KEY"}'
+  -H 'x-moderator-session: DEIN_MODERATOR_SESSION_TOKEN' \
+  -d '{"dryRun":true,"limit":10}'
 ```
 
 Echte Migration: `"dryRun":false` — danach alte Dateien im Supabase-Bucket `song-assets` manuell prüfen und leeren.

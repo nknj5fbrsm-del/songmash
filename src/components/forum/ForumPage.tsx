@@ -30,7 +30,6 @@ type ForumView = 'home' | 'board' | 'thread'
 export function ForumPage() {
   const { songs } = useSongs()
   const { unlocked: moderatorUnlocked } = useModerator()
-  const moderatorKey = import.meta.env.VITE_MODERATOR_KEY as string | undefined
 
   const [hasSession, setHasSession] = useState(() => Boolean(readForumSession()))
   const [displayName, setDisplayName] = useState(() => readForumDisplayName())
@@ -237,10 +236,9 @@ export function ForumPage() {
             </div>
           )}
 
-          {view === 'home' && moderatorUnlocked && moderatorKey && (
+          {view === 'home' && moderatorUnlocked && (
             <ForumAdminPanel
               categories={categories}
-              moderatorKey={moderatorKey}
               onChanged={() => void loadStructure()}
             />
           )}
@@ -293,7 +291,7 @@ export function ForumPage() {
                 setActiveThreadId(null)
                 if (activeBoardId) void loadBoard(activeBoardId)
               }}
-              moderatorKey={moderatorUnlocked ? moderatorKey : undefined}
+              moderatorUnlocked={moderatorUnlocked}
             />
           )}
         </div>
