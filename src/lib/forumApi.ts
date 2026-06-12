@@ -206,6 +206,21 @@ export async function forumAdminDeleteBoard(boardId: string, moderatorKey: strin
   await parseResponse(response)
 }
 
+export async function forumAdminMoveThread(
+  threadId: string,
+  boardId: string,
+  moderatorKey: string,
+): Promise<string> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeaders(),
+    body: JSON.stringify({ action: 'admin_move_thread', threadId, boardId, moderatorKey }),
+  })
+
+  const data = await parseResponse<{ boardId: string }>(response)
+  return data.boardId
+}
+
 export function isForumConfigured(): boolean {
   return isSupabaseConfigured()
 }

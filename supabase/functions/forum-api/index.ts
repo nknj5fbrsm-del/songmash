@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
         return await handleAdminUpsertBoard(supabase, body, req)
       case 'admin_delete_board':
         return await handleAdminDeleteBoard(supabase, body, req)
+      case 'admin_move_thread':
+        return await handleAdminMoveThread(supabase, body)
       default:
         return json({ error: 'Unbekannte Aktion.' }, 400)
     }
@@ -498,6 +500,47 @@ async function handleAdminDeleteBoard(
   if (error) throw new Error(error.message)
 
   return json({ ok: true })
+}
+
+async function handleAdminMoveThread(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+  requireModerator(body)
+
+  const threadId = body.threadId?.trim()
+  const boardId = body.boardId?.trim()
+  if (!threadId || !boardId) throw new Error('threadId und boardId fehlen.')
+
+  const { data: board, error: boardError } = await supabase
+    .from('forum_boards')
+    .select('id')
+    .eq('id', boardId)
+    .maybeSingle()
+
+  if (boardError) throw new Error(boardError.message)
+  if (!board) throw new Error('Ziel-Unterbereich nicht gefunden.')
+
+  const { data: thread, error: threadError } = await supabase
+    .from('forum_threads')
+    .select('board_id')
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (threadError) throw new Error(threadError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+  if (thread.board_id === boardId) {
+    throw new Error('Thema liegt bereits in diesem Unterbereich.')
+  }
+
+  const { error } = await supabase
+    .from('forum_threads')
+    .update({
+      board_id: boardId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', threadId)
+
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true, boardId })
 }
 
 async function assertSongExists(supabase: ReturnType<typeof createClient>, songId: string) {

@@ -107,15 +107,22 @@ export function ForumPage() {
     }
   }, [hasSession, displayName, loadStructure])
 
-  const handleLogout = () => {
-    clearForumSession()
-    setHasSession(false)
+  const goHome = useCallback(() => {
     setView('home')
-    setCategories([])
     setBoardDetail(null)
     setThreads([])
     setThreadDetail(null)
     setPosts([])
+    setActiveBoardId(null)
+    setActiveThreadId(null)
+    void loadStructure()
+  }, [loadStructure])
+
+  const handleLogout = () => {
+    clearForumSession()
+    setHasSession(false)
+    goHome()
+    setCategories([])
   }
 
   const handleSelectSong = (song: Song) => {
@@ -253,11 +260,8 @@ export function ForumPage() {
               songsById={songsById}
               pendingSong={pendingSong}
               onClearPendingSong={() => setPendingSong(null)}
-              onBack={() => {
-                setView('home')
-                setBoardDetail(null)
-                void loadStructure()
-              }}
+              onBack={goHome}
+              onHome={goHome}
               onOpenThread={(threadId) => void loadThread(threadId)}
               onCreated={(threadId) => void loadThread(threadId)}
             />
@@ -267,6 +271,7 @@ export function ForumPage() {
             <ForumThreadView
               thread={threadDetail}
               posts={posts}
+              categories={categories}
               displayName={displayName}
               songsById={songsById}
               pendingSong={pendingSong}
@@ -274,8 +279,13 @@ export function ForumPage() {
               onBack={() => {
                 if (activeBoardId) void loadBoard(activeBoardId)
               }}
+              onHome={goHome}
               onRefresh={() => {
                 if (activeThreadId) void loadThread(activeThreadId)
+              }}
+              onMoved={(boardId) => {
+                setActiveBoardId(boardId)
+                void loadStructure()
               }}
               moderatorKey={moderatorUnlocked ? moderatorKey : undefined}
             />

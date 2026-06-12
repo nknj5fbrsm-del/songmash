@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowLeft, Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
+import { ForumNavBar } from './ForumNavBar'
 import { ForumApiError, forumCreateThread } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
 import type { ForumBoardDetail, ForumThreadSummary } from '../../types/forum'
@@ -14,6 +15,7 @@ interface ForumBoardViewProps {
   pendingSong: Song | null
   onClearPendingSong: () => void
   onBack: () => void
+  onHome: () => void
   onOpenThread: (threadId: string) => void
   onCreated: (threadId: string) => void
 }
@@ -26,6 +28,7 @@ export function ForumBoardView({
   pendingSong,
   onClearPendingSong,
   onBack,
+  onHome,
   onOpenThread,
   onCreated,
 }: ForumBoardViewProps) {
@@ -61,14 +64,12 @@ export function ForumBoardView({
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-4 inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-300"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Zurück zur Übersicht
-      </button>
+      <ForumNavBar
+        backLabel="Zurück zur Übersicht"
+        onBack={onBack}
+        onHome={onHome}
+        showHomeLink={false}
+      />
 
       <header className="mb-5">
         <p className="text-xs uppercase tracking-wider text-neutral-600">{board.categoryName}</p>
