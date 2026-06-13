@@ -314,6 +314,36 @@ export async function forumAdminMoveThread(threadId: string, boardId: string): P
   return data.boardId
 }
 
+export async function forumAdminLockThread(threadId: string, locked: boolean): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_lock_thread', threadId, locked }),
+  })
+
+  await parseResponse(response)
+}
+
+export async function forumAdminPinThread(threadId: string, pinned: boolean): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_pin_thread', threadId, pinned }),
+  })
+
+  await parseResponse(response)
+}
+
+export async function forumAdminDeleteThread(threadId: string): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_delete_thread', threadId }),
+  })
+
+  await parseResponse(response)
+}
+
 export function isForumConfigured(): boolean {
   return isSupabaseConfigured()
 }

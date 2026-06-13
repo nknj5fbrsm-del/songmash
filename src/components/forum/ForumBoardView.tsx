@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Lock, Pin, Plus } from 'lucide-react'
 import { ForumNavBar } from './ForumNavBar'
 import { ForumApiError, forumCreateThread } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
@@ -162,6 +162,12 @@ export function ForumBoardView({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="flex min-w-0 items-center gap-2 font-medium text-neutral-100">
+                      {thread.isPinned && (
+                        <Pin className="h-3.5 w-3.5 shrink-0 text-lime-400" aria-label="Angepinnt" />
+                      )}
+                      {thread.isLocked && (
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-red-400" aria-label="Geschlossen" />
+                      )}
                       <span className="truncate">{thread.title}</span>
                       {isForumThreadUnread(thread.id, thread.updatedAt, board.id) && (
                         <ForumUnreadBadge />

@@ -37,6 +37,8 @@ type ActionBody = {
   name?: string
   description?: string
   sortOrder?: number
+  locked?: boolean
+  pinned?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -78,7 +80,7 @@ Deno.serve(async (req) => {
       case 'create_thread':
         return await handleCreateThread(supabase, body)
       case 'create_post':
-        return await handleCreatePost(supabase, body)
+        return await handleCreatePost(supabase, body, req)
       case 'delete_post':
         return await handleDeletePost(supabase, body, req)
       case 'update_post':
@@ -93,6 +95,12 @@ Deno.serve(async (req) => {
         return await handleAdminDeleteBoard(supabase, body, req)
       case 'admin_move_thread':
         return await handleAdminMoveThread(supabase, body, req)
+      case 'admin_lock_thread':
+        return await handleAdminLockThread(supabase, body, req)
+      case 'admin_pin_thread':
+        return await handleAdminPinThread(supabase, body, req)
+      case 'admin_delete_thread':
+        return await handleAdminDeleteThread(supabase, body, req)
       case 'admin_export_forum':
         return await handleAdminExportForum(supabase, req)
       default:
@@ -364,7 +372,11 @@ async function handleCreateThread(supabase: ReturnType<typeof createClient>, bod
   return json({ threadId: thread.id })
 }
 
-async function handleCreatePost(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+async function handleCreatePost(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
   const threadId = body.threadId?.trim()
   const postBody = body.body?.trim() ?? ''
   const authorName = trimAuthor(body.authorName)
@@ -382,7 +394,9 @@ async function handleCreatePost(supabase: ReturnType<typeof createClient>, body:
 
   if (threadError) throw new Error(threadError.message)
   if (!thread) throw new Error('Thema nicht gefunden.')
-  if (thread.is_locked) throw new Error('Dieses Thema ist geschlossen.')
+  if (thread.is_locked && !(await isModeratorRequest(req))) {
+    throw new Error('Dieses Thema ist geschlossen.')
+  }
 
   const songId = body.songId?.trim() || null
   if (songId) await assertSongExists(supabase, songId)
@@ -480,19 +494,22 @@ async function handleUpdatePost(
   }
 
   const post = await loadPostForAction(supabase, postId)
-  if (!(await isModeratorRequest(req))) {
+  const asModerator = await isModeratorRequest(req)
+  if (!asModerator) {
     assertOwnPost(body, post.author_name)
   }
 
-  const { data: thread, error: threadError } = await supabase
-    .from('forum_threads')
-    .select('is_locked')
-    .eq('id', post.thread_id)
-    .maybeSingle()
+  if (!asModerator) {
+    const { data: thread, error: threadError } = await supabase
+      .from('forum_threads')
+      .select('is_locked')
+      .eq('id', post.thread_id)
+      .maybeSingle()
 
-  if (threadError) throw new Error(threadError.message)
-  if (!thread) throw new Error('Thema nicht gefunden.')
-  if (thread.is_locked) throw new Error('Dieses Thema ist geschlossen.')
+    if (threadError) throw new Error(threadError.message)
+    if (!thread) throw new Error('Thema nicht gefunden.')
+    if (thread.is_locked) throw new Error('Dieses Thema ist geschlossen.')
+  }
 
   const songId =
     body.songId !== undefined ? body.songId?.trim() || null : post.song_id
@@ -746,6 +763,119 @@ async function handleAdminMoveThread(
   if (error) throw new Error(error.message)
 
   return json({ ok: true, boardId })
+}
+
+async function handleAdminLockThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const threadId = body.threadId?.trim()
+  if (!threadId) throw new Error('threadId fehlt.')
+  if (typeof body.locked !== 'boolean') throw new Error('locked muss true oder false sein.')
+
+  const { data: thread, error: findError } = await supabase
+    .from('forum_threads')
+    .select('id')
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (findError) throw new Error(findError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+
+  const { error } = await supabase
+    .from('forum_threads')
+    .update({
+      is_locked: body.locked,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', threadId)
+
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true, locked: body.locked })
+}
+
+async function handleAdminPinThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const threadId = body.threadId?.trim()
+  if (!threadId) throw new Error('threadId fehlt.')
+  if (typeof body.pinned !== 'boolean') throw new Error('pinned muss true oder false sein.')
+
+  const { data: thread, error: findError } = await supabase
+    .from('forum_threads')
+    .select('id')
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (findError) throw new Error(findError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+
+  const { error } = await supabase
+    .from('forum_threads')
+    .update({
+      is_pinned: body.pinned,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', threadId)
+
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true, pinned: body.pinned })
+}
+
+async function handleAdminDeleteThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const threadId = body.threadId?.trim()
+  if (!threadId) throw new Error('threadId fehlt.')
+
+  const { data: thread, error: threadError } = await supabase
+    .from('forum_threads')
+    .select('id')
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (threadError) throw new Error(threadError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+
+  const { data: posts, error: postsError } = await supabase
+    .from('forum_posts')
+    .select('image_url, audio_url')
+    .eq('thread_id', threadId)
+
+  if (postsError) throw new Error(postsError.message)
+
+  for (const post of posts ?? []) {
+    await purgeForumAttachments(post)
+  }
+
+  const { error: deletePostsError } = await supabase
+    .from('forum_posts')
+    .delete()
+    .eq('thread_id', threadId)
+
+  if (deletePostsError) throw new Error(deletePostsError.message)
+
+  const { error: deleteThreadError } = await supabase
+    .from('forum_threads')
+    .delete()
+    .eq('id', threadId)
+
+  if (deleteThreadError) throw new Error(deleteThreadError.message)
+
+  return json({ ok: true })
 }
 
 async function assertSongExists(supabase: ReturnType<typeof createClient>, songId: string) {

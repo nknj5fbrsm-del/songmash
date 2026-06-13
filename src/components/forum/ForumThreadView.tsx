@@ -1,9 +1,12 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { ArrowRightLeft, Loader2, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowRightLeft, Loader2, Lock, LockOpen, Pin, PinOff, Pencil, Trash2, X } from 'lucide-react'
 import { ForumNavBar } from './ForumNavBar'
 import {
   ForumApiError,
+  forumAdminDeleteThread,
+  forumAdminLockThread,
   forumAdminMoveThread,
+  forumAdminPinThread,
   forumCreatePost,
   forumDeletePost,
   forumUpdatePost,
@@ -59,6 +62,10 @@ export function ForumThreadView({
   const [moveCategoryId, setMoveCategoryId] = useState('')
   const [moveBoardId, setMoveBoardId] = useState('')
   const [moveLoading, setMoveLoading] = useState(false)
+  const [modActionLoading, setModActionLoading] = useState(false)
+
+  const canReply = !thread.isLocked || !!moderatorUnlocked
+  const canModeratePosts = !thread.isLocked || !!moderatorUnlocked
 
   const moveBoards = useMemo(() => {
     const category = categories.find((c) => c.id === moveCategoryId)
@@ -97,7 +104,7 @@ export function ForumThreadView({
 
   const handleReply = async (e: FormEvent) => {
     e.preventDefault()
-    if (thread.isLocked) return
+    if (!canReply) return
     setError('')
     setLoading(true)
     try {
@@ -135,7 +142,7 @@ export function ForumThreadView({
   }
 
   const handleSaveEdit = async (post: ForumPost) => {
-    if (!canModifyPost(post) || thread.isLocked) return
+    if (!canModifyPost(post) || !canModeratePosts) return
     setEditLoading(true)
     setError('')
     try {
@@ -175,6 +182,46 @@ export function ForumThreadView({
     }
   }
 
+  const runModAction = async (fn: () => Promise<void>) => {
+    setModActionLoading(true)
+    setError('')
+    try {
+      await fn()
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof ForumApiError ? err.message : 'Aktion fehlgeschlagen.')
+    } finally {
+      setModActionLoading(false)
+    }
+  }
+
+  const handleToggleLock = () => {
+    void runModAction(() => forumAdminLockThread(thread.id, !thread.isLocked))
+  }
+
+  const handleTogglePin = () => {
+    void runModAction(() => forumAdminPinThread(thread.id, !thread.isPinned))
+  }
+
+  const handleDeleteThread = async () => {
+    if (
+      !window.confirm(
+        'Gesamtes Thema mit allen Beiträgen und Anhängen unwiderruflich löschen?',
+      )
+    ) {
+      return
+    }
+    setModActionLoading(true)
+    setError('')
+    try {
+      await forumAdminDeleteThread(thread.id)
+      onThreadDeleted?.()
+    } catch (err) {
+      setError(err instanceof ForumApiError ? err.message : 'Löschen fehlgeschlagen.')
+      setModActionLoading(false)
+    }
+  }
+
   return (
     <div>
       <ForumNavBar
@@ -188,24 +235,82 @@ export function ForumThreadView({
           {thread.categoryName} · {thread.boardName}
         </p>
         <h1 className="page-title text-2xl">{thread.title}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {thread.isPinned && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-lime-400/10 px-2 py-0.5 text-xs text-lime-300">
+              <Pin className="h-3 w-3" />
+              Angepinnt
+            </span>
+          )}
+          {thread.isLocked && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-300">
+              <Lock className="h-3 w-3" />
+              Geschlossen
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-sm text-neutral-500">
           von {thread.authorName} · {formatForumDate(thread.createdAt)}
         </p>
-        {thread.isLocked && (
+        {thread.isLocked && !moderatorUnlocked && (
           <p className="alert-error mt-3 text-sm">Dieses Thema ist geschlossen.</p>
         )}
         {moderatorUnlocked && (
-          <div className="mt-4">
-            {!moveOpen ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={openMovePanel}
+                onClick={handleToggleLock}
+                disabled={modActionLoading}
+                className="btn-secondary !py-2 text-sm"
+              >
+                {modActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : thread.isLocked ? (
+                  <LockOpen className="h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+                {thread.isLocked ? 'Thema öffnen' : 'Thema schließen'}
+              </button>
+              <button
+                type="button"
+                onClick={handleTogglePin}
+                disabled={modActionLoading}
+                className="btn-secondary !py-2 text-sm"
+              >
+                {modActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : thread.isPinned ? (
+                  <PinOff className="h-4 w-4" />
+                ) : (
+                  <Pin className="h-4 w-4" />
+                )}
+                {thread.isPinned ? 'Lösen' : 'Anpinnen'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!moveOpen) openMovePanel()
+                  else setMoveOpen(false)
+                }}
+                disabled={modActionLoading}
                 className="btn-secondary !py-2 text-sm"
               >
                 <ArrowRightLeft className="h-4 w-4" />
-                Thema verschieben
+                Verschieben
               </button>
-            ) : (
+              <button
+                type="button"
+                onClick={handleDeleteThread}
+                disabled={modActionLoading}
+                className="btn-secondary !py-2 text-sm text-red-300 hover:text-red-200"
+              >
+                <Trash2 className="h-4 w-4" />
+                Thema löschen
+              </button>
+            </div>
+            {moveOpen && (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="mb-3 text-sm font-medium text-amber-200/90">
                   Thema in anderen Unterbereich verschieben
@@ -251,7 +356,10 @@ export function ForumThreadView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMoveOpen(false)}
+                    onClick={() => {
+                      setMoveOpen(false)
+                      setMoveBoardId('')
+                    }}
                     className="btn-secondary !py-2 text-sm"
                   >
                     Abbrechen
@@ -269,7 +377,7 @@ export function ForumThreadView({
         {posts.map((post) => {
           const song = post.songId ? songsById.get(post.songId) : undefined
           const isEditing = editingPostId === post.id
-          const showActions = canModifyPost(post) && !thread.isLocked
+          const showActions = canModifyPost(post) && (moderatorUnlocked || !thread.isLocked)
           return (
             <li key={post.id} className="card !p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
@@ -349,9 +457,11 @@ export function ForumThreadView({
         })}
       </ul>
 
-      {!thread.isLocked && (
+      {canReply && (
         <form onSubmit={handleReply} className="card space-y-4">
-          <h2 className="text-sm font-semibold text-neutral-300">Antworten</h2>
+          <h2 className="text-sm font-semibold text-neutral-300">
+            {thread.isLocked && moderatorUnlocked ? 'Antworten (Moderator)' : 'Antworten'}
+          </h2>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value.slice(0, 10000))}
