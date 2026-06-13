@@ -72,6 +72,7 @@ function AppContent() {
       </main>
       <Footer
         padForMobileVoteDock={page === 'match'}
+        padForForumStickyNav={page === 'forum'}
         showModeration={isConfigured}
         onModeration={() => navigate('moderation')}
         onForum={() => navigate('forum')}

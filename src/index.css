@@ -72,8 +72,13 @@ audio {
   @apply bg-lime-400 text-neutral-950 shadow-lg shadow-lime-400/15 hover:text-neutral-950;
 }
 
-/* Voting: Footer-Inhalt auf Mobile oberhalb der festen Abstimmen-Leiste */
+/* Forum: Footer oberhalb der festen Navigationsleiste */
+.footer-forum-sticky-nav {
+  padding-bottom: calc(1.5rem + 4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 @media (max-width: 1023px) {
+  /* Voting: Footer-Inhalt auf Mobile oberhalb der festen Abstimmen-Leiste */
   .footer-mobile-vote-dock {
     padding-bottom: calc(1.5rem + 13rem + env(safe-area-inset-bottom, 0px));
   }

@@ -3,6 +3,7 @@ import { Shield } from 'lucide-react'
 interface FooterProps {
   showModeration?: boolean
   padForMobileVoteDock?: boolean
+  padForForumStickyNav?: boolean
   onModeration?: () => void
   onForum?: () => void
   onImpressum?: () => void
@@ -14,6 +15,7 @@ interface FooterProps {
 export function Footer({
   showModeration,
   padForMobileVoteDock,
+  padForForumStickyNav,
   onModeration,
   onForum,
   onImpressum,
@@ -33,7 +35,7 @@ export function Footer({
     <footer
       className={`mt-auto border-t border-neutral-800/60 py-6 ${
         padForMobileVoteDock ? 'footer-mobile-vote-dock' : ''
-      }`}
+      } ${padForForumStickyNav ? 'footer-forum-sticky-nav' : ''}`}
     >
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 text-center text-xs text-neutral-600">
         <p>SongMash · Community-Voting für KI-Musik</p>
