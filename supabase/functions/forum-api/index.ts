@@ -158,17 +158,22 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
 
   const boardIds = (boards ?? []).map((b) => b.id)
   const threadCounts = new Map<string, number>()
+  const latestActivityByBoard = new Map<string, string>()
 
   if (boardIds.length > 0) {
     const { data: threads, error: threadError } = await supabase
       .from('forum_threads')
-      .select('board_id')
+      .select('board_id, updated_at')
       .in('board_id', boardIds)
 
     if (threadError) throw new Error(threadError.message)
 
     for (const row of threads ?? []) {
       threadCounts.set(row.board_id, (threadCounts.get(row.board_id) ?? 0) + 1)
+      const prev = latestActivityByBoard.get(row.board_id)
+      if (!prev || row.updated_at > prev) {
+        latestActivityByBoard.set(row.board_id, row.updated_at)
+      }
     }
   }
 
@@ -187,6 +192,7 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
           description: b.description ?? undefined,
           sortOrder: b.sort_order,
           threadCount: threadCounts.get(b.id) ?? 0,
+          latestActivityAt: latestActivityByBoard.get(b.id) ?? undefined,
         })),
     })),
   })

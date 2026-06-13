@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { SongProvider, useSongs } from './context/SongContext'
 import { WeekCompetitionProvider } from './context/WeekCompetitionContext'
 import { isTurnstileEnabled } from './lib/turnstileConfig'
-import { Navigation, type Page } from './components/Navigation'
+import { Navigation } from './components/Navigation'
 import { Footer } from './components/Footer'
 import { MatchPage } from './components/MatchPage'
 import { LeaderboardPage } from './components/LeaderboardPage'
@@ -15,9 +15,10 @@ import { RemoveSongPage } from './components/RemoveSongPage'
 import { ForumPage } from './components/forum/ForumPage'
 import { ReportContentInfoModal } from './components/ReportContentInfoModal'
 import { useModerator } from './hooks/useModerator'
+import { useAppNavigation } from './hooks/useAppNavigation'
 
 function AppContent() {
-  const [page, setPage] = useState<Page>('match')
+  const { page, navigate } = useAppNavigation()
   const [reportInfoOpen, setReportInfoOpen] = useState(false)
   const { isLoading, error } = useSongs()
   const { isConfigured } = useModerator()
@@ -40,7 +41,7 @@ function AppContent() {
         page !== 'impressum' &&
         page !== 'datenschutz' &&
         page !== 'remove-song' && (
-        <Navigation current={page} onNavigate={setPage} />
+        <Navigation current={page} onNavigate={navigate} />
       )}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {error && <div className="alert-error mb-6">{error}</div>}
@@ -57,26 +58,26 @@ function AppContent() {
             }
             aria-hidden={page !== 'submit'}
           >
-            <SubmitSongPage isActive={page === 'submit'} onLeave={() => setPage('match')} />
+            <SubmitSongPage isActive={page === 'submit'} onLeave={() => navigate('match')} />
           </div>
         ) : (
           page === 'submit' && (
-            <SubmitSongPage isActive onLeave={() => setPage('match')} />
+            <SubmitSongPage isActive onLeave={() => navigate('match')} />
           )
         )}
-        {page === 'moderation' && <ModerationPage onBack={() => setPage('match')} />}
-        {page === 'impressum' && <ImpressumPage onBack={() => setPage('match')} />}
-        {page === 'datenschutz' && <DatenschutzPage onBack={() => setPage('match')} />}
-        {page === 'remove-song' && <RemoveSongPage onBack={() => setPage('match')} />}
+        {page === 'moderation' && <ModerationPage onBack={() => navigate('match')} />}
+        {page === 'impressum' && <ImpressumPage onBack={() => navigate('match')} />}
+        {page === 'datenschutz' && <DatenschutzPage onBack={() => navigate('match')} />}
+        {page === 'remove-song' && <RemoveSongPage onBack={() => navigate('match')} />}
       </main>
       <Footer
         padForMobileVoteDock={page === 'match'}
         showModeration={isConfigured}
-        onModeration={() => setPage('moderation')}
-        onForum={() => setPage('forum')}
-        onImpressum={() => setPage('impressum')}
-        onDatenschutz={() => setPage('datenschutz')}
-        onRemoveSong={() => setPage('remove-song')}
+        onModeration={() => navigate('moderation')}
+        onForum={() => navigate('forum')}
+        onImpressum={() => navigate('impressum')}
+        onDatenschutz={() => navigate('datenschutz')}
+        onRemoveSong={() => navigate('remove-song')}
         onReportInfo={() => setReportInfoOpen(true)}
       />
       <ReportContentInfoModal open={reportInfoOpen} onClose={() => setReportInfoOpen(false)} />

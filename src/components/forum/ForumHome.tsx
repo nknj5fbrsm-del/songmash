@@ -1,12 +1,16 @@
 import { ChevronRight, MessageSquare } from 'lucide-react'
+import { isForumBoardUnread } from '../../lib/forumReadStorage'
 import type { ForumCategory } from '../../types/forum'
+import { ForumUnreadBadge } from './ForumUnreadBadge'
 
 interface ForumHomeProps {
   categories: ForumCategory[]
+  readRevision: number
   onOpenBoard: (boardId: string) => void
 }
 
-export function ForumHome({ categories, onOpenBoard }: ForumHomeProps) {
+export function ForumHome({ categories, readRevision, onOpenBoard }: ForumHomeProps) {
+  void readRevision
   return (
     <div className="space-y-6">
       {categories.map((category) => (
@@ -28,7 +32,10 @@ export function ForumHome({ categories, onOpenBoard }: ForumHomeProps) {
                 >
                   <MessageSquare className="h-5 w-5 shrink-0 text-lime-400/80" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-neutral-100">{board.name}</p>
+                    <p className="flex items-center gap-2 font-medium text-neutral-100">
+                      {board.name}
+                      {isForumBoardUnread(board.id, board.latestActivityAt) && <ForumUnreadBadge />}
+                    </p>
                     {board.description && (
                       <p className="mt-0.5 truncate text-sm text-neutral-500">{board.description}</p>
                     )}

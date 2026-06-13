@@ -3,14 +3,17 @@ import { Loader2, Plus } from 'lucide-react'
 import { ForumNavBar } from './ForumNavBar'
 import { ForumApiError, forumCreateThread } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
+import { isForumThreadUnread } from '../../lib/forumReadStorage'
 import type { ForumBoardDetail, ForumPendingAttachments, ForumThreadSummary } from '../../types/forum'
 import type { Song } from '../../types/song'
 import { ForumAttachmentPicker } from './ForumAttachmentPicker'
 import { ForumSongEmbed } from './ForumSongEmbed'
+import { ForumUnreadBadge } from './ForumUnreadBadge'
 
 interface ForumBoardViewProps {
   board: ForumBoardDetail
   threads: ForumThreadSummary[]
+  readRevision: number
   displayName: string
   songsById: Map<string, Song>
   pendingSong: Song | null
@@ -24,6 +27,7 @@ interface ForumBoardViewProps {
 export function ForumBoardView({
   board,
   threads,
+  readRevision,
   displayName,
   songsById,
   pendingSong,
@@ -33,6 +37,8 @@ export function ForumBoardView({
   onOpenThread,
   onCreated,
 }: ForumBoardViewProps) {
+  void readRevision
+
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -155,7 +161,12 @@ export function ForumBoardView({
                   className="flex w-full flex-col gap-1 px-4 py-3.5 text-left transition-colors hover:bg-neutral-800/40"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-neutral-100">{thread.title}</p>
+                    <p className="flex min-w-0 items-center gap-2 font-medium text-neutral-100">
+                      <span className="truncate">{thread.title}</span>
+                      {isForumThreadUnread(thread.id, thread.updatedAt, board.id) && (
+                        <ForumUnreadBadge />
+                      )}
+                    </p>
                     <span className="shrink-0 text-xs text-neutral-600">
                       {thread.postCount} {thread.postCount === 1 ? 'Beitrag' : 'Beiträge'}
                     </span>

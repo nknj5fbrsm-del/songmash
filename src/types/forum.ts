@@ -5,6 +5,7 @@ export interface ForumBoardSummary {
   description?: string
   sortOrder: number
   threadCount: number
+  latestActivityAt?: string
 }
 
 export interface ForumCategory {

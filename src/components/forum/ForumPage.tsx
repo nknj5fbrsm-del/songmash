@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Library, Loader2, LogOut, Pencil } from 'lucide-react'
 import { useSongs } from '../../context/SongContext'
 import { useModerator } from '../../hooks/useModerator'
@@ -15,6 +15,14 @@ import {
   readForumSession,
   writeForumDisplayName,
 } from '../../lib/forumStorage'
+import {
+  markForumBoardVisited,
+  markForumThreadRead,
+} from '../../lib/forumReadStorage'
+import {
+  parseForumHash,
+  setForumHash,
+} from '../../lib/forumHashRoute'
 import type { ForumBoardDetail, ForumCategory, ForumPost, ForumThreadDetail, ForumThreadSummary } from '../../types/forum'
 import type { Song } from '../../types/song'
 import { ForumAdminPanel } from './ForumAdminPanel'
@@ -24,6 +32,7 @@ import { ForumGate } from './ForumGate'
 import { ForumHome } from './ForumHome'
 import { ForumSongLibrary } from './ForumSongLibrary'
 import { ForumThreadView } from './ForumThreadView'
+import { ForumStickyNav } from './ForumStickyNav'
 
 type ForumView = 'home' | 'board' | 'thread'
 
@@ -51,6 +60,18 @@ export function ForumPage() {
   const [pendingSong, setPendingSong] = useState<Song | null>(null)
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const [readRevision, setReadRevision] = useState(0)
+
+  const viewRef = useRef(view)
+  const activeBoardIdRef = useRef(activeBoardId)
+  const activeThreadIdRef = useRef(activeThreadId)
+  viewRef.current = view
+  activeBoardIdRef.current = activeBoardId
+  activeThreadIdRef.current = activeThreadId
+
+  const bumpReadRevision = useCallback(() => {
+    setReadRevision((n) => n + 1)
+  }, [])
 
   const songsById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs])
 
@@ -67,7 +88,7 @@ export function ForumPage() {
     }
   }, [])
 
-  const loadBoard = useCallback(async (boardId: string) => {
+  const loadBoardInternal = useCallback(async (boardId: string): Promise<boolean> => {
     setLoading(true)
     setError('')
     try {
@@ -76,14 +97,21 @@ export function ForumPage() {
       setThreads(data.threads)
       setView('board')
       setActiveBoardId(boardId)
+      setThreadDetail(null)
+      setPosts([])
+      setActiveThreadId(null)
+      markForumBoardVisited(boardId)
+      bumpReadRevision()
+      return true
     } catch (err) {
       setError(err instanceof ForumApiError ? err.message : 'Themen konnten nicht geladen werden.')
+      return false
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [bumpReadRevision])
 
-  const loadThread = useCallback(async (threadId: string) => {
+  const loadThreadInternal = useCallback(async (threadId: string): Promise<boolean> => {
     setLoading(true)
     setError('')
     try {
@@ -93,20 +121,36 @@ export function ForumPage() {
       setView('thread')
       setActiveThreadId(threadId)
       setActiveBoardId(data.thread.boardId)
+      markForumThreadRead(threadId, data.thread.updatedAt)
+      bumpReadRevision()
+      return true
     } catch (err) {
       setError(err instanceof ForumApiError ? err.message : 'Thema konnte nicht geladen werden.')
+      return false
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [bumpReadRevision])
 
-  useEffect(() => {
-    if (hasSession && displayName) {
-      void loadStructure()
-    }
-  }, [hasSession, displayName, loadStructure])
+  const navigateBoard = useCallback(
+    (boardId: string) => {
+      void loadBoardInternal(boardId).then((ok) => {
+        if (ok) setForumHash({ view: 'board', boardId })
+      })
+    },
+    [loadBoardInternal],
+  )
 
-  const goHome = useCallback(() => {
+  const navigateThread = useCallback(
+    (threadId: string) => {
+      void loadThreadInternal(threadId).then((ok) => {
+        if (ok) setForumHash({ view: 'thread', threadId })
+      })
+    },
+    [loadThreadInternal],
+  )
+
+  const goHomeInternal = useCallback(() => {
     setView('home')
     setBoardDetail(null)
     setThreads([])
@@ -117,11 +161,50 @@ export function ForumPage() {
     void loadStructure()
   }, [loadStructure])
 
+  const navigateHome = useCallback(() => {
+    goHomeInternal()
+    setForumHash({ view: 'home' })
+  }, [goHomeInternal])
+
+  useEffect(() => {
+    if (hasSession && displayName) {
+      void loadStructure()
+    }
+  }, [hasSession, displayName, loadStructure])
+
+  useEffect(() => {
+    if (!hasSession || !displayName) return
+
+    const syncFromHash = () => {
+      const route = parseForumHash(window.location.hash)
+      const currentView = viewRef.current
+      const currentBoardId = activeBoardIdRef.current
+      const currentThreadId = activeThreadIdRef.current
+
+      if (route.view === 'home') {
+        if (currentView !== 'home') goHomeInternal()
+        return
+      }
+      if (route.view === 'board') {
+        if (currentView === 'board' && currentBoardId === route.boardId) return
+        void loadBoardInternal(route.boardId)
+        return
+      }
+      if (currentView === 'thread' && currentThreadId === route.threadId) return
+      void loadThreadInternal(route.threadId)
+    }
+
+    syncFromHash()
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [hasSession, displayName, goHomeInternal, loadBoardInternal, loadThreadInternal])
+
   const handleLogout = () => {
     clearForumSession()
     setHasSession(false)
-    goHome()
+    goHomeInternal()
     setCategories([])
+    setForumHash({ view: 'home' }, true)
   }
 
   const handleSelectSong = (song: Song) => {
@@ -154,7 +237,7 @@ export function ForumPage() {
   }
 
   return (
-    <div>
+    <div className="pb-24">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="page-title text-2xl">Community-Forum</h1>
@@ -246,7 +329,8 @@ export function ForumPage() {
           {view === 'home' && (
             <ForumHome
               categories={categories}
-              onOpenBoard={(boardId) => void loadBoard(boardId)}
+              readRevision={readRevision}
+              onOpenBoard={navigateBoard}
             />
           )}
 
@@ -254,14 +338,15 @@ export function ForumPage() {
             <ForumBoardView
               board={boardDetail}
               threads={threads}
+              readRevision={readRevision}
               displayName={displayName}
               songsById={songsById}
               pendingSong={pendingSong}
               onClearPendingSong={() => setPendingSong(null)}
-              onBack={goHome}
-              onHome={goHome}
-              onOpenThread={(threadId) => void loadThread(threadId)}
-              onCreated={(threadId) => void loadThread(threadId)}
+              onBack={navigateHome}
+              onHome={navigateHome}
+              onOpenThread={navigateThread}
+              onCreated={navigateThread}
             />
           )}
 
@@ -275,27 +360,43 @@ export function ForumPage() {
               pendingSong={pendingSong}
               onClearPendingSong={() => setPendingSong(null)}
               onBack={() => {
-                if (activeBoardId) void loadBoard(activeBoardId)
+                if (activeBoardId) navigateBoard(activeBoardId)
               }}
-              onHome={goHome}
+              onHome={navigateHome}
               onRefresh={() => {
-                if (activeThreadId) void loadThread(activeThreadId)
+                if (activeThreadId) void loadThreadInternal(activeThreadId)
               }}
               onMoved={(boardId) => {
                 setActiveBoardId(boardId)
                 void loadStructure()
+                if (activeThreadId) setForumHash({ view: 'thread', threadId: activeThreadId })
               }}
               onThreadDeleted={() => {
                 setThreadDetail(null)
                 setPosts([])
                 setActiveThreadId(null)
-                if (activeBoardId) void loadBoard(activeBoardId)
+                if (activeBoardId) navigateBoard(activeBoardId)
               }}
               moderatorUnlocked={moderatorUnlocked}
             />
           )}
         </div>
       </div>
+
+      <ForumStickyNav
+        backLabel={
+          view === 'thread' && threadDetail
+            ? `Zurück zu ${threadDetail.boardName}`
+            : 'Zurück zur Übersicht'
+        }
+        onBack={() => {
+          if (view === 'board') navigateHome()
+          else if (view === 'thread' && activeBoardId) navigateBoard(activeBoardId)
+        }}
+        onHome={navigateHome}
+        backDisabled={view === 'home'}
+        homeDisabled={view === 'home'}
+      />
     </div>
   )
 }
