@@ -60,8 +60,6 @@ export function ForumThreadView({
   const [moveBoardId, setMoveBoardId] = useState('')
   const [moveLoading, setMoveLoading] = useState(false)
 
-  const threadSong = thread.songId ? songsById.get(thread.songId) : undefined
-
   const moveBoards = useMemo(() => {
     const category = categories.find((c) => c.id === moveCategoryId)
     return category?.boards ?? []
@@ -193,11 +191,6 @@ export function ForumThreadView({
         <p className="mt-1 text-sm text-neutral-500">
           von {thread.authorName} · {formatForumDate(thread.createdAt)}
         </p>
-        {threadSong && (
-          <div className="mt-3">
-            <ForumSongEmbed song={threadSong} />
-          </div>
-        )}
         {thread.isLocked && (
           <p className="alert-error mt-3 text-sm">Dieses Thema ist geschlossen.</p>
         )}
