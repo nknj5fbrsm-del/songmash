@@ -58,10 +58,8 @@ export function ForumThreadView({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
-  const [editLoading, setEditLoading] = useState(false)
-  const [editingTitle, setEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
-  const [titleEditLoading, setTitleEditLoading] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
   const [moveCategoryId, setMoveCategoryId] = useState('')
   const [moveBoardId, setMoveBoardId] = useState('')
@@ -72,6 +70,9 @@ export function ForumThreadView({
   const canModeratePosts = !thread.isLocked || !!moderatorUnlocked
   const canEditTitle =
     (thread.authorName === displayName || !!moderatorUnlocked) && canModeratePosts
+
+  const openingPostId = posts[0]?.id
+  const isOpeningPost = (postId: string) => postId === openingPostId
 
   const moveBoards = useMemo(() => {
     const category = categories.find((c) => c.id === moveCategoryId)
@@ -139,24 +140,40 @@ export function ForumThreadView({
   const startEdit = (post: ForumPost) => {
     setEditingPostId(post.id)
     setEditBody(post.body)
+    setEditTitle(isOpeningPost(post.id) && canEditTitle ? thread.title : '')
     setError('')
   }
 
   const cancelEdit = () => {
     setEditingPostId(null)
     setEditBody('')
+    setEditTitle('')
   }
 
   const handleSaveEdit = async (post: ForumPost) => {
     if (!canModifyPost(post) || !canModeratePosts) return
+    const trimmedBody = editBody.trim()
+    const trimmedTitle = editTitle.trim()
+    const editingOpening = isOpeningPost(post.id) && canEditTitle
+
+    if (trimmedBody.length < 1) return
+    if (editingOpening && trimmedTitle.length < 3) return
+
     setEditLoading(true)
     setError('')
     try {
       await forumUpdatePost({
         postId: post.id,
-        body: editBody.trim(),
+        body: trimmedBody,
         authorName: displayName,
       })
+      if (editingOpening && trimmedTitle !== thread.title) {
+        await forumUpdateThread({
+          threadId: thread.id,
+          title: trimmedTitle,
+          authorName: displayName,
+        })
+      }
       cancelEdit()
       onRefresh()
     } catch (err) {
@@ -228,38 +245,6 @@ export function ForumThreadView({
     }
   }
 
-  const startTitleEdit = () => {
-    setEditingTitle(true)
-    setEditTitle(thread.title)
-    setError('')
-  }
-
-  const cancelTitleEdit = () => {
-    setEditingTitle(false)
-    setEditTitle('')
-  }
-
-  const handleSaveTitle = async () => {
-    if (!canEditTitle) return
-    const trimmed = editTitle.trim()
-    if (trimmed.length < 3) return
-    setTitleEditLoading(true)
-    setError('')
-    try {
-      await forumUpdateThread({
-        threadId: thread.id,
-        title: trimmed,
-        authorName: displayName,
-      })
-      cancelTitleEdit()
-      onRefresh()
-    } catch (err) {
-      setError(err instanceof ForumApiError ? err.message : 'Titel konnte nicht gespeichert werden.')
-    } finally {
-      setTitleEditLoading(false)
-    }
-  }
-
   return (
     <div>
       <ForumNavBar
@@ -272,51 +257,7 @@ export function ForumThreadView({
         <p className="text-xs uppercase tracking-wider text-neutral-600">
           {thread.categoryName} · {thread.boardName}
         </p>
-        {editingTitle ? (
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value.slice(0, 120))}
-              className="input-field text-xl font-bold"
-              autoFocus
-            />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleSaveTitle}
-                disabled={titleEditLoading || editTitle.trim().length < 3}
-                className="btn-primary !py-2 text-sm"
-              >
-                {titleEditLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Speichern
-              </button>
-              <button
-                type="button"
-                onClick={cancelTitleEdit}
-                disabled={titleEditLoading}
-                className="btn-secondary !py-2 text-sm"
-              >
-                <X className="h-4 w-4" />
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2">
-            <h1 className="page-title min-w-0 flex-1 text-2xl">{thread.title}</h1>
-            {canEditTitle && (
-              <button
-                type="button"
-                onClick={startTitleEdit}
-                className="mt-1 shrink-0 rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-lime-300"
-                aria-label="Titel bearbeiten"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        )}
+        <h1 className="page-title text-2xl">{thread.title}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {thread.isPinned && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">
@@ -460,6 +401,7 @@ export function ForumThreadView({
           const song = post.songId ? songsById.get(post.songId) : undefined
           const isEditing = editingPostId === post.id
           const showActions = canModifyPost(post) && (moderatorUnlocked || !thread.isLocked)
+          const showTitleField = isEditing && isOpeningPost(post.id) && canEditTitle
           return (
             <li key={post.id} className="card !p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
@@ -491,11 +433,24 @@ export function ForumThreadView({
               </div>
               {isEditing ? (
                 <div className="space-y-3">
+                  {showTitleField && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-neutral-500">
+                        Titel des Themas
+                      </label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value.slice(0, 120))}
+                        className="input-field text-sm font-semibold"
+                      />
+                    </div>
+                  )}
                   <textarea
                     value={editBody}
                     onChange={(e) => setEditBody(e.target.value.slice(0, 10000))}
                     className="input-field min-h-[100px] resize-y text-sm"
-                    autoFocus
+                    autoFocus={!showTitleField}
                   />
                   {song && (
                     <div>
@@ -506,7 +461,11 @@ export function ForumThreadView({
                     <button
                       type="button"
                       onClick={() => handleSaveEdit(post)}
-                      disabled={editLoading || editBody.trim().length < 1}
+                      disabled={
+                        editLoading ||
+                        editBody.trim().length < 1 ||
+                        (showTitleField && editTitle.trim().length < 3)
+                      }
                       className="btn-primary !py-2 text-sm"
                     >
                       {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
