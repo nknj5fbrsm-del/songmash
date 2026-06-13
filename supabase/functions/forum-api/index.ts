@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
         return await handleDeletePost(supabase, body, req)
       case 'update_post':
         return await handleUpdatePost(supabase, body, req)
+      case 'update_thread':
+        return await handleUpdateThread(supabase, body, req)
       case 'admin_upsert_category':
         return await handleAdminUpsertCategory(supabase, body, req)
       case 'admin_delete_category':
@@ -568,6 +570,49 @@ async function handleUpdatePost(
   }
 
   await supabase.from('forum_threads').update(threadUpdate).eq('id', post.thread_id)
+
+  return json({ ok: true })
+}
+
+async function handleUpdateThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  const threadId = body.threadId?.trim()
+  const title = body.title?.trim() ?? ''
+  if (!threadId) throw new Error('threadId fehlt.')
+  if (title.length < 3 || title.length > MAX_TITLE) {
+    throw new Error(`Titel muss 3–${MAX_TITLE} Zeichen haben.`)
+  }
+
+  const { data: thread, error: threadError } = await supabase
+    .from('forum_threads')
+    .select('author_name, is_locked')
+    .eq('id', threadId)
+    .maybeSingle()
+
+  if (threadError) throw new Error(threadError.message)
+  if (!thread) throw new Error('Thema nicht gefunden.')
+
+  const asModerator = await isModeratorRequest(req)
+  if (!asModerator) {
+    const authorName = trimAuthor(body.authorName)
+    if (thread.author_name !== authorName) {
+      throw new Error('Du kannst nur eigene Themen umbenennen.')
+    }
+    if (thread.is_locked) throw new Error('Dieses Thema ist geschlossen.')
+  }
+
+  const { error } = await supabase
+    .from('forum_threads')
+    .update({
+      title,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', threadId)
+
+  if (error) throw new Error(error.message)
 
   return json({ ok: true })
 }

@@ -10,6 +10,7 @@ import {
   forumCreatePost,
   forumDeletePost,
   forumUpdatePost,
+  forumUpdateThread,
 } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
 import type { ForumCategory, ForumPendingAttachments, ForumPost, ForumThreadDetail } from '../../types/forum'
@@ -58,6 +59,9 @@ export function ForumThreadView({
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [titleEditLoading, setTitleEditLoading] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
   const [moveCategoryId, setMoveCategoryId] = useState('')
   const [moveBoardId, setMoveBoardId] = useState('')
@@ -66,6 +70,8 @@ export function ForumThreadView({
 
   const canReply = !thread.isLocked || !!moderatorUnlocked
   const canModeratePosts = !thread.isLocked || !!moderatorUnlocked
+  const canEditTitle =
+    (thread.authorName === displayName || !!moderatorUnlocked) && canModeratePosts
 
   const moveBoards = useMemo(() => {
     const category = categories.find((c) => c.id === moveCategoryId)
@@ -222,6 +228,38 @@ export function ForumThreadView({
     }
   }
 
+  const startTitleEdit = () => {
+    setEditingTitle(true)
+    setEditTitle(thread.title)
+    setError('')
+  }
+
+  const cancelTitleEdit = () => {
+    setEditingTitle(false)
+    setEditTitle('')
+  }
+
+  const handleSaveTitle = async () => {
+    if (!canEditTitle) return
+    const trimmed = editTitle.trim()
+    if (trimmed.length < 3) return
+    setTitleEditLoading(true)
+    setError('')
+    try {
+      await forumUpdateThread({
+        threadId: thread.id,
+        title: trimmed,
+        authorName: displayName,
+      })
+      cancelTitleEdit()
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof ForumApiError ? err.message : 'Titel konnte nicht gespeichert werden.')
+    } finally {
+      setTitleEditLoading(false)
+    }
+  }
+
   return (
     <div>
       <ForumNavBar
@@ -234,7 +272,51 @@ export function ForumThreadView({
         <p className="text-xs uppercase tracking-wider text-neutral-600">
           {thread.categoryName} · {thread.boardName}
         </p>
-        <h1 className="page-title text-2xl">{thread.title}</h1>
+        {editingTitle ? (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value.slice(0, 120))}
+              className="input-field text-xl font-bold"
+              autoFocus
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSaveTitle}
+                disabled={titleEditLoading || editTitle.trim().length < 3}
+                className="btn-primary !py-2 text-sm"
+              >
+                {titleEditLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Speichern
+              </button>
+              <button
+                type="button"
+                onClick={cancelTitleEdit}
+                disabled={titleEditLoading}
+                className="btn-secondary !py-2 text-sm"
+              >
+                <X className="h-4 w-4" />
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2">
+            <h1 className="page-title min-w-0 flex-1 text-2xl">{thread.title}</h1>
+            {canEditTitle && (
+              <button
+                type="button"
+                onClick={startTitleEdit}
+                className="mt-1 shrink-0 rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-lime-300"
+                aria-label="Titel bearbeiten"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {thread.isPinned && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">

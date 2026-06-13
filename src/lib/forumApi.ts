@@ -194,6 +194,20 @@ export async function forumUpdatePost(params: {
   await parseResponse(response)
 }
 
+export async function forumUpdateThread(params: {
+  threadId: string
+  title: string
+  authorName: string
+}): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeadersWithOptionalModerator(),
+    body: JSON.stringify({ action: 'update_thread', ...params }),
+  })
+
+  await parseResponse(response)
+}
+
 export async function forumAdminUpsertCategory(params: {
   categoryId?: string
   name: string
