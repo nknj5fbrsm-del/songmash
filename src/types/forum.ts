@@ -1,3 +1,14 @@
+export interface ForumPinnedThread {
+  id: string
+  boardId: string
+  title: string
+  authorName: string
+  boardName: string
+  categoryName: string
+  isLocked: boolean
+  updatedAt: string
+}
+
 export interface ForumBoardSummary {
   id: string
   categoryId: string

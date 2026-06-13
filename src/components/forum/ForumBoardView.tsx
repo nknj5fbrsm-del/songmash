@@ -163,15 +163,16 @@ export function ForumBoardView({
                   <div className="flex items-start justify-between gap-3">
                     <p className="flex min-w-0 items-center gap-2 font-medium text-neutral-100">
                       {thread.isPinned && (
-                        <Pin className="h-3.5 w-3.5 shrink-0 text-lime-400" aria-label="Angepinnt" />
+                        <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-label="Angepinnt" />
                       )}
                       {thread.isLocked && (
                         <Lock className="h-3.5 w-3.5 shrink-0 text-red-400" aria-label="Geschlossen" />
                       )}
                       <span className="truncate">{thread.title}</span>
-                      {isForumThreadUnread(thread.id, thread.updatedAt, board.id) && (
-                        <ForumUnreadBadge />
-                      )}
+                      {!thread.isPinned &&
+                        isForumThreadUnread(thread.id, thread.updatedAt, board.id) && (
+                          <ForumUnreadBadge />
+                        )}
                     </p>
                     <span className="shrink-0 text-xs text-neutral-600">
                       {thread.postCount} {thread.postCount === 1 ? 'Beitrag' : 'Beiträge'}

@@ -237,7 +237,7 @@ export function ForumThreadView({
         <h1 className="page-title text-2xl">{thread.title}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {thread.isPinned && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-lime-400/10 px-2 py-0.5 text-xs text-lime-300">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">
               <Pin className="h-3 w-3" />
               Angepinnt
             </span>

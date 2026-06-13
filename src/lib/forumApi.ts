@@ -1,6 +1,7 @@
 import type {
   ForumBoardDetail,
   ForumCategory,
+  ForumPinnedThread,
   ForumPost,
   ForumThreadDetail,
   ForumThreadSummary,
@@ -87,15 +88,19 @@ export async function forumLogin(password: string): Promise<void> {
   writeForumSession(data.sessionToken)
 }
 
-export async function forumFetchStructure(): Promise<ForumCategory[]> {
+export type ForumStructure = {
+  categories: ForumCategory[]
+  pinnedThreads: ForumPinnedThread[]
+}
+
+export async function forumFetchStructure(): Promise<ForumStructure> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
     method: 'POST',
     headers: forumHeaders(),
     body: JSON.stringify({ action: 'structure' }),
   })
 
-  const data = await parseResponse<{ categories: ForumCategory[] }>(response)
-  return data.categories
+  return parseResponse(response)
 }
 
 export async function forumFetchThreads(boardId: string): Promise<{

@@ -23,7 +23,7 @@ import {
   parseForumHash,
   setForumHash,
 } from '../../lib/forumHashRoute'
-import type { ForumBoardDetail, ForumCategory, ForumPost, ForumThreadDetail, ForumThreadSummary } from '../../types/forum'
+import type { ForumBoardDetail, ForumCategory, ForumPinnedThread, ForumPost, ForumThreadDetail, ForumThreadSummary } from '../../types/forum'
 import type { Song } from '../../types/song'
 import { ForumAdminPanel } from './ForumAdminPanel'
 import { ForumBoardView } from './ForumBoardView'
@@ -47,6 +47,7 @@ export function ForumPage() {
 
   const [view, setView] = useState<ForumView>('home')
   const [categories, setCategories] = useState<ForumCategory[]>([])
+  const [pinnedThreads, setPinnedThreads] = useState<ForumPinnedThread[]>([])
   const [boardDetail, setBoardDetail] = useState<ForumBoardDetail | null>(null)
   const [threads, setThreads] = useState<ForumThreadSummary[]>([])
   const [threadDetail, setThreadDetail] = useState<ForumThreadDetail | null>(null)
@@ -80,7 +81,8 @@ export function ForumPage() {
     setError('')
     try {
       const data = await forumFetchStructure()
-      setCategories(data)
+      setCategories(data.categories)
+      setPinnedThreads(data.pinnedThreads)
     } catch (err) {
       setError(err instanceof ForumApiError ? err.message : 'Forum konnte nicht geladen werden.')
     } finally {
@@ -204,6 +206,7 @@ export function ForumPage() {
     setHasSession(false)
     goHomeInternal()
     setCategories([])
+    setPinnedThreads([])
     setForumHash({ view: 'home' }, true)
   }
 
@@ -329,8 +332,10 @@ export function ForumPage() {
           {view === 'home' && (
             <ForumHome
               categories={categories}
+              pinnedThreads={pinnedThreads}
               readRevision={readRevision}
               onOpenBoard={navigateBoard}
+              onOpenThread={navigateThread}
             />
           )}
 

@@ -203,6 +203,35 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
           latestActivityAt: latestActivityByBoard.get(b.id) ?? undefined,
         })),
     })),
+    pinnedThreads: await loadPinnedThreads(supabase),
+  })
+}
+
+async function loadPinnedThreads(supabase: ReturnType<typeof createClient>) {
+  const { data: threads, error } = await supabase
+    .from('forum_threads')
+    .select('*, forum_boards(name, forum_categories(name))')
+    .eq('is_pinned', true)
+    .order('updated_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  return (threads ?? []).map((t) => {
+    const board = t.forum_boards as {
+      name?: string
+      forum_categories?: { name?: string } | null
+    } | null
+
+    return {
+      id: t.id,
+      boardId: t.board_id,
+      title: t.title,
+      authorName: t.author_name,
+      boardName: board?.name ?? '',
+      categoryName: board?.forum_categories?.name ?? '',
+      isLocked: t.is_locked,
+      updatedAt: t.updated_at,
+    }
   })
 }
 
