@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, Download, Loader2, Settings, Trash2 } from 'lucide-react'
+import { ChevronDown, Download, Loader2, Pencil, Settings, Trash2, X } from 'lucide-react'
 import {
   ForumApiError,
   forumAdminDeleteBoard,
@@ -8,12 +8,17 @@ import {
   forumAdminUpsertBoard,
   forumAdminUpsertCategory,
 } from '../../lib/forumApi'
-import type { ForumCategory } from '../../types/forum'
+import type { ForumBoardSummary, ForumCategory } from '../../types/forum'
 
 interface ForumAdminPanelProps {
   categories: ForumCategory[]
   onChanged: () => void
 }
+
+type EditTarget =
+  | { type: 'category'; id: string }
+  | { type: 'board'; id: string }
+  | null
 
 export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps) {
   const [open, setOpen] = useState(false)
@@ -24,6 +29,11 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
   const [boardDescription, setBoardDescription] = useState('')
   const [boardCategoryId, setBoardCategoryId] = useState('')
   const [backupLoading, setBackupLoading] = useState(false)
+  const [editTarget, setEditTarget] = useState<EditTarget>(null)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editBoardCategoryId, setEditBoardCategoryId] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     if (categories.length === 0) {
@@ -44,6 +54,117 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
       setError(err instanceof ForumApiError ? err.message : 'Aktion fehlgeschlagen.')
     }
   }
+
+  const cancelEdit = () => {
+    setEditTarget(null)
+    setEditName('')
+    setEditDescription('')
+    setEditBoardCategoryId('')
+  }
+
+  const startEditCategory = (cat: ForumCategory) => {
+    setEditTarget({ type: 'category', id: cat.id })
+    setEditName(cat.name)
+    setEditDescription(cat.description ?? '')
+  }
+
+  const startEditBoard = (board: ForumBoardSummary, categoryId: string) => {
+    setEditTarget({ type: 'board', id: board.id })
+    setEditName(board.name)
+    setEditDescription(board.description ?? '')
+    setEditBoardCategoryId(categoryId)
+  }
+
+  const saveEdit = async () => {
+    if (!editTarget) return
+    if (!editName.trim()) {
+      setError('Bitte einen Namen eingeben.')
+      return
+    }
+    if (editTarget.type === 'board' && !editBoardCategoryId) {
+      setError('Bitte eine Kategorie auswählen.')
+      return
+    }
+
+    setError('')
+    setEditSaving(true)
+    try {
+      if (editTarget.type === 'category') {
+        await forumAdminUpsertCategory({
+          categoryId: editTarget.id,
+          name: editName.trim(),
+          description: editDescription.trim() || undefined,
+        })
+      } else {
+        await forumAdminUpsertBoard({
+          boardId: editTarget.id,
+          categoryId: editBoardCategoryId,
+          name: editName.trim(),
+          description: editDescription.trim() || undefined,
+        })
+      }
+      cancelEdit()
+      onChanged()
+    } catch (err) {
+      setError(err instanceof ForumApiError ? err.message : 'Speichern fehlgeschlagen.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const renderEditForm = (showCategorySelect: boolean) => (
+    <div className="space-y-2">
+      {showCategorySelect && (
+        <select
+          value={editBoardCategoryId}
+          onChange={(e) => setEditBoardCategoryId(e.target.value)}
+          className="input-field w-full !py-2 !text-sm"
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      )}
+      <input
+        type="text"
+        value={editName}
+        onChange={(e) => setEditName(e.target.value)}
+        maxLength={80}
+        className="input-field w-full !py-2 !text-sm font-medium"
+        autoFocus
+      />
+      <input
+        type="text"
+        value={editDescription}
+        onChange={(e) => setEditDescription(e.target.value)}
+        placeholder="Beschreibung (optional, max. 250 Zeichen)"
+        maxLength={250}
+        className="input-field w-full !py-2 !text-sm"
+      />
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={saveEdit}
+          disabled={editSaving || !editName.trim()}
+          className="btn-primary !py-1.5 text-xs"
+        >
+          {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Speichern
+        </button>
+        <button
+          type="button"
+          onClick={cancelEdit}
+          disabled={editSaving}
+          className="btn-secondary !py-1.5 text-xs"
+        >
+          <X className="h-3.5 w-3.5" />
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
@@ -195,8 +316,14 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
           </div>
 
           <ul className="space-y-2 text-sm">
-            {categories.map((cat) => (
+            {categories.map((cat) => {
+              const editingCategory =
+                editTarget?.type === 'category' && editTarget.id === cat.id
+              return (
               <li key={cat.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+                {editingCategory ? (
+                  renderEditForm(false)
+                ) : (
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <span className="font-medium text-neutral-200">{cat.name}</span>
@@ -204,6 +331,15 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                       <p className="mt-0.5 text-xs text-neutral-500">{cat.description}</p>
                     )}
                   </div>
+                  <div className="flex shrink-0 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => startEditCategory(cat)}
+                    className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-lime-300"
+                    aria-label="Kategorie bearbeiten"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() =>
@@ -212,21 +348,39 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                         await forumAdminDeleteCategory(cat.id)
                       })
                     }
-                    className="text-neutral-600 hover:text-red-300"
+                    className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-red-300"
                     aria-label="Kategorie löschen"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  </div>
                 </div>
+                )}
                 <ul className="mt-2 space-y-1 pl-2">
-                  {cat.boards.map((board) => (
-                    <li key={board.id} className="flex items-center justify-between gap-2 text-neutral-500">
+                  {cat.boards.map((board) => {
+                    const editingBoard =
+                      editTarget?.type === 'board' && editTarget.id === board.id
+                    return (
+                    <li key={board.id} className="rounded-lg py-1">
+                      {editingBoard ? (
+                        renderEditForm(true)
+                      ) : (
+                      <div className="flex items-center justify-between gap-2 text-neutral-500">
                       <div>
                         <span>{board.name}</span>
                         {board.description && (
                           <p className="text-xs text-neutral-600">{board.description}</p>
                         )}
                       </div>
+                      <div className="flex shrink-0 gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => startEditBoard(board, cat.id)}
+                        className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-lime-300"
+                        aria-label="Unterbereich bearbeiten"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -236,16 +390,21 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                             await forumAdminDeleteBoard(board.id)
                           })
                         }
-                        className="text-neutral-600 hover:text-red-300"
+                        className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-red-300"
                         aria-label="Unterbereich löschen"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      </div>
+                      </div>
+                      )}
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               </li>
-            ))}
+              )
+            })}
           </ul>
 
           {error && <p className="text-sm text-red-300">{error}</p>}
