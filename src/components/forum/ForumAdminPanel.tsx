@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, Download, Loader2, Settings, Trash2 } from 'lucide-react'
 import {
   ForumApiError,
@@ -19,9 +19,21 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const [catName, setCatName] = useState('')
+  const [catDescription, setCatDescription] = useState('')
   const [boardName, setBoardName] = useState('')
-  const [boardCategoryId, setBoardCategoryId] = useState(categories[0]?.id ?? '')
+  const [boardDescription, setBoardDescription] = useState('')
+  const [boardCategoryId, setBoardCategoryId] = useState('')
   const [backupLoading, setBackupLoading] = useState(false)
+
+  useEffect(() => {
+    if (categories.length === 0) {
+      setBoardCategoryId('')
+      return
+    }
+    setBoardCategoryId((current) =>
+      current && categories.some((c) => c.id === current) ? current : categories[0].id,
+    )
+  }, [categories])
 
   const run = async (fn: () => Promise<void>) => {
     setError('')
@@ -80,73 +92,118 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
             </button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                value={catName}
+                onChange={(e) => setCatName(e.target.value)}
+                placeholder="Neue Kategorie"
+                className="input-field flex-1 !py-2 !text-sm"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  run(async () => {
+                    if (!catName.trim()) {
+                      setError('Bitte einen Kategorienamen eingeben.')
+                      return
+                    }
+                    const newId = await forumAdminUpsertCategory({
+                      name: catName.trim(),
+                      description: catDescription.trim() || undefined,
+                    })
+                    setCatName('')
+                    setCatDescription('')
+                    setBoardCategoryId(newId)
+                  })
+                }
+                className="btn-secondary shrink-0"
+              >
+                Kategorie anlegen
+              </button>
+            </div>
             <input
               type="text"
-              value={catName}
-              onChange={(e) => setCatName(e.target.value)}
-              placeholder="Neue Kategorie"
-              className="input-field flex-1 !py-2 !text-sm"
+              value={catDescription}
+              onChange={(e) => setCatDescription(e.target.value)}
+              placeholder="Beschreibung (optional, max. 250 Zeichen)"
+              maxLength={250}
+              className="input-field w-full !py-2 !text-sm"
             />
-            <button
-              type="button"
-              onClick={() =>
-                run(async () => {
-                  if (!catName.trim()) return
-                  await forumAdminUpsertCategory({
-                    name: catName.trim(),
-                  })
-                  setCatName('')
-                })
-              }
-              className="btn-secondary shrink-0"
-            >
-              Kategorie anlegen
-            </button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <select
-              value={boardCategoryId}
-              onChange={(e) => setBoardCategoryId(e.target.value)}
-              className="input-field flex-1 !py-2 !text-sm"
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={boardCategoryId}
+                onChange={(e) => setBoardCategoryId(e.target.value)}
+                disabled={categories.length === 0}
+                className="input-field flex-1 !py-2 !text-sm disabled:opacity-50"
+              >
+                {categories.length === 0 ? (
+                  <option value="">Keine Kategorie vorhanden</option>
+                ) : (
+                  categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))
+                )}
+              </select>
+              <input
+                type="text"
+                value={boardName}
+                onChange={(e) => setBoardName(e.target.value)}
+                placeholder="Neuer Unterbereich"
+                className="input-field flex-1 !py-2 !text-sm"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  run(async () => {
+                    if (!boardCategoryId) {
+                      setError('Bitte zuerst eine Kategorie anlegen oder auswählen.')
+                      return
+                    }
+                    if (!boardName.trim()) {
+                      setError('Bitte einen Namen für den Unterbereich eingeben.')
+                      return
+                    }
+                    await forumAdminUpsertBoard({
+                      categoryId: boardCategoryId,
+                      name: boardName.trim(),
+                      description: boardDescription.trim() || undefined,
+                    })
+                    setBoardName('')
+                    setBoardDescription('')
+                  })
+                }
+                className="btn-secondary shrink-0"
+              >
+                Unterbereich anlegen
+              </button>
+            </div>
             <input
               type="text"
-              value={boardName}
-              onChange={(e) => setBoardName(e.target.value)}
-              placeholder="Neuer Unterbereich"
-              className="input-field flex-1 !py-2 !text-sm"
+              value={boardDescription}
+              onChange={(e) => setBoardDescription(e.target.value)}
+              placeholder="Beschreibung (optional, max. 250 Zeichen)"
+              maxLength={250}
+              className="input-field w-full !py-2 !text-sm"
             />
-            <button
-              type="button"
-              onClick={() =>
-                run(async () => {
-                  if (!boardName.trim() || !boardCategoryId) return
-                  await forumAdminUpsertBoard({
-                    categoryId: boardCategoryId,
-                    name: boardName.trim(),
-                  })
-                  setBoardName('')
-                })
-              }
-              className="btn-secondary shrink-0"
-            >
-              Unterbereich anlegen
-            </button>
           </div>
 
           <ul className="space-y-2 text-sm">
             {categories.map((cat) => (
               <li key={cat.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-neutral-200">{cat.name}</span>
+                  <div>
+                    <span className="font-medium text-neutral-200">{cat.name}</span>
+                    {cat.description && (
+                      <p className="mt-0.5 text-xs text-neutral-500">{cat.description}</p>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
@@ -164,7 +221,12 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                 <ul className="mt-2 space-y-1 pl-2">
                   {cat.boards.map((board) => (
                     <li key={board.id} className="flex items-center justify-between gap-2 text-neutral-500">
-                      <span>{board.name}</span>
+                      <div>
+                        <span>{board.name}</span>
+                        {board.description && (
+                          <p className="text-xs text-neutral-600">{board.description}</p>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() =>
