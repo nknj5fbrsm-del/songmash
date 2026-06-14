@@ -1,6 +1,7 @@
 import type {
   ForumBoardDetail,
   ForumCategory,
+  ForumLoungeMessage,
   ForumPinnedThread,
   ForumPost,
   ForumThreadDetail,
@@ -358,6 +359,45 @@ export async function forumAdminDeleteThread(threadId: string): Promise<void> {
     method: 'POST',
     headers: forumModeratorHeaders(),
     body: JSON.stringify({ action: 'admin_delete_thread', threadId }),
+  })
+
+  await parseResponse(response)
+}
+
+export async function forumFetchLoungeMessages(since?: string): Promise<{
+  messages: ForumLoungeMessage[]
+}> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeaders(),
+    body: JSON.stringify({
+      action: 'list_lounge_messages',
+      ...(since ? { since } : {}),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumSendLoungeMessage(params: {
+  body: string
+  authorName: string
+}): Promise<ForumLoungeMessage> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumHeaders(),
+    body: JSON.stringify({ action: 'send_lounge_message', ...params }),
+  })
+
+  const data = await parseResponse<{ message: ForumLoungeMessage }>(response)
+  return data.message
+}
+
+export async function forumDeleteLoungeMessage(messageId: string): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'delete_lounge_message', messageId }),
   })
 
   await parseResponse(response)

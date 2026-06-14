@@ -1,9 +1,11 @@
-import { ArrowLeft, LayoutGrid } from 'lucide-react'
+import { ArrowLeft, LayoutGrid, MessageCircle } from 'lucide-react'
 
 interface ForumStickyNavProps {
   backLabel: string
   onBack: () => void
   onHome: () => void
+  onChat: () => void
+  chatOpen?: boolean
   backDisabled?: boolean
   homeDisabled?: boolean
 }
@@ -11,10 +13,15 @@ interface ForumStickyNavProps {
 const iconButtonClass =
   'rounded-xl p-3 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-neutral-400'
 
+const iconButtonActiveClass =
+  'rounded-xl bg-lime-400/15 p-3 text-lime-300 transition-colors hover:bg-lime-400/20 hover:text-lime-200'
+
 export function ForumStickyNav({
   backLabel,
   onBack,
   onHome,
+  onChat,
+  chatOpen = false,
   backDisabled = false,
   homeDisabled = false,
 }: ForumStickyNavProps) {
@@ -43,6 +50,16 @@ export function ForumStickyNav({
           title={homeDisabled ? undefined : 'Forum-Übersicht'}
         >
           <LayoutGrid className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onChat}
+          className={chatOpen ? iconButtonActiveClass : iconButtonClass}
+          aria-label={chatOpen ? 'Chat schließen' : 'Lounge-Chat öffnen'}
+          title={chatOpen ? 'Chat schließen' : 'Lounge-Chat'}
+          aria-pressed={chatOpen}
+        >
+          <MessageCircle className="h-5 w-5" />
         </button>
       </nav>
     </div>

@@ -7,6 +7,10 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { normalizeForumAttachmentUrl, purgeForumAttachments } from '../_shared/forumAssets.ts'
+import {
+  assertForumLoungeRateLimit,
+  recordForumLoungeMessage,
+} from '../_shared/forumLoungeRateLimit.ts'
 import { requireForumSession, verifyForumSession } from '../_shared/forumSession.ts'
 import { isModeratorRequest, requireModeratorRequest } from '../_shared/moderatorRequest.ts'
 
@@ -21,6 +25,8 @@ const MAX_TITLE = 120
 const MAX_BODY = 10_000
 const MAX_NAME = 80
 const MAX_DESC = 250
+const MAX_LOUNGE_BODY = 400
+const LOUNGE_RETENTION_DAYS = 5
 
 type ActionBody = {
   action?: string
@@ -39,6 +45,8 @@ type ActionBody = {
   sortOrder?: number
   locked?: boolean
   pinned?: boolean
+  since?: string
+  messageId?: string
 }
 
 Deno.serve(async (req) => {
@@ -105,6 +113,12 @@ Deno.serve(async (req) => {
         return await handleAdminDeleteThread(supabase, body, req)
       case 'admin_export_forum':
         return await handleAdminExportForum(supabase, req)
+      case 'list_lounge_messages':
+        return await handleListLoungeMessages(supabase, body)
+      case 'send_lounge_message':
+        return await handleSendLoungeMessage(supabase, body, session)
+      case 'delete_lounge_message':
+        return await handleDeleteLoungeMessage(supabase, body, req)
       default:
         return json({ error: 'Unbekannte Aktion.' }, 400)
     }
@@ -956,4 +970,102 @@ async function assertSongExists(supabase: ReturnType<typeof createClient>, songI
   const { data, error } = await supabase.from('songs').select('id').eq('id', songId).maybeSingle()
   if (error) throw new Error(error.message)
   if (!data) throw new Error('Song nicht gefunden.')
+}
+
+type LoungeRow = {
+  id: string
+  author_name: string
+  body: string
+  created_at: string
+}
+
+function mapLoungeMessage(row: LoungeRow) {
+  return {
+    id: row.id,
+    authorName: row.author_name,
+    body: row.body,
+    createdAt: row.created_at,
+  }
+}
+
+async function purgeOldLoungeMessages(supabase: ReturnType<typeof createClient>) {
+  const olderThan = new Date(Date.now() - LOUNGE_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  await supabase.from('forum_lounge_messages').delete().lt('created_at', olderThan)
+}
+
+async function handleListLoungeMessages(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+) {
+  await purgeOldLoungeMessages(supabase)
+
+  const since = body.since?.trim()
+
+  if (since) {
+    const { data, error } = await supabase
+      .from('forum_lounge_messages')
+      .select('id, author_name, body, created_at')
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+      .limit(50)
+
+    if (error) throw new Error(error.message)
+    return json({ messages: (data ?? []).map(mapLoungeMessage) })
+  }
+
+  const { data, error } = await supabase
+    .from('forum_lounge_messages')
+    .select('id, author_name, body, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (error) throw new Error(error.message)
+  return json({ messages: (data ?? []).reverse().map(mapLoungeMessage) })
+}
+
+async function handleSendLoungeMessage(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  sessionToken: string,
+) {
+  const authorName = trimAuthor(body.authorName)
+  const messageBody = body.body?.trim() ?? ''
+
+  if (messageBody.length < 1 || messageBody.length > MAX_LOUNGE_BODY) {
+    throw new Error(`Nachricht muss 1–${MAX_LOUNGE_BODY} Zeichen haben.`)
+  }
+
+  await assertForumLoungeRateLimit(supabase, sessionToken)
+  await purgeOldLoungeMessages(supabase)
+
+  const { data, error } = await supabase
+    .from('forum_lounge_messages')
+    .insert({
+      author_name: authorName,
+      body: messageBody,
+    })
+    .select('id, author_name, body, created_at')
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  await recordForumLoungeMessage(supabase, sessionToken)
+
+  return json({ message: mapLoungeMessage(data) })
+}
+
+async function handleDeleteLoungeMessage(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const messageId = body.messageId?.trim()
+  if (!messageId) throw new Error('messageId fehlt.')
+
+  const { error } = await supabase.from('forum_lounge_messages').delete().eq('id', messageId)
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true })
 }

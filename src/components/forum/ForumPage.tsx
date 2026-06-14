@@ -32,6 +32,7 @@ import { ForumGate } from './ForumGate'
 import { ForumHome } from './ForumHome'
 import { ForumSongLibrary } from './ForumSongLibrary'
 import { ForumThreadView } from './ForumThreadView'
+import { ForumLoungeSheet } from './ForumLoungeSheet'
 import { ForumStickyNav } from './ForumStickyNav'
 
 type ForumView = 'home' | 'board' | 'thread'
@@ -62,6 +63,7 @@ export function ForumPage() {
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [readRevision, setReadRevision] = useState(0)
+  const [loungeOpen, setLoungeOpen] = useState(false)
 
   const viewRef = useRef(view)
   const activeBoardIdRef = useRef(activeBoardId)
@@ -399,8 +401,17 @@ export function ForumPage() {
           else if (view === 'thread' && activeBoardId) navigateBoard(activeBoardId)
         }}
         onHome={navigateHome}
+        onChat={() => setLoungeOpen((v) => !v)}
+        chatOpen={loungeOpen}
         backDisabled={view === 'home'}
         homeDisabled={view === 'home'}
+      />
+
+      <ForumLoungeSheet
+        open={loungeOpen}
+        onClose={() => setLoungeOpen(false)}
+        displayName={displayName}
+        moderatorUnlocked={moderatorUnlocked}
       />
     </div>
   )

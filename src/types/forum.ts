@@ -77,3 +77,10 @@ export interface ForumPendingAttachments {
   imageUrl?: string
   audioUrl?: string
 }
+
+export interface ForumLoungeMessage {
+  id: string
+  authorName: string
+  body: string
+  createdAt: string
+}
