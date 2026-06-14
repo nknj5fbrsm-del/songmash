@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { SongProvider, useSongs } from './context/SongContext'
 import { WeekCompetitionProvider } from './context/WeekCompetitionContext'
@@ -13,15 +13,44 @@ import { ImpressumPage } from './components/ImpressumPage'
 import { DatenschutzPage } from './components/DatenschutzPage'
 import { RemoveSongPage } from './components/RemoveSongPage'
 import { ForumPage } from './components/forum/ForumPage'
+import { ForumAnnouncementModal } from './components/ForumAnnouncementModal'
 import { ReportContentInfoModal } from './components/ReportContentInfoModal'
 import { useModerator } from './hooks/useModerator'
 import { useAppNavigation } from './hooks/useAppNavigation'
+import { isForumAppHash } from './lib/forumHashRoute'
+import {
+  dismissForumAnnouncementForVisit,
+  incrementSiteVisitCount,
+  shouldShowForumAnnouncement,
+} from './lib/forumAnnouncementStorage'
 
 function AppContent() {
   const { page, navigate } = useAppNavigation()
   const [reportInfoOpen, setReportInfoOpen] = useState(false)
+  const [forumAnnouncementOpen, setForumAnnouncementOpen] = useState(false)
+  const [forumAnnouncementVisit, setForumAnnouncementVisit] = useState<number | null>(null)
   const { isLoading, error } = useSongs()
   const { isConfigured } = useModerator()
+  const announcementCheckedRef = useRef(false)
+
+  useEffect(() => {
+    if (isLoading || announcementCheckedRef.current) return
+    announcementCheckedRef.current = true
+
+    const visitCount = incrementSiteVisitCount()
+    if (isForumAppHash(window.location.hash)) return
+    if (shouldShowForumAnnouncement(visitCount)) {
+      setForumAnnouncementVisit(visitCount)
+      setForumAnnouncementOpen(true)
+    }
+  }, [isLoading])
+
+  const closeForumAnnouncement = () => {
+    if (forumAnnouncementVisit !== null) {
+      dismissForumAnnouncementForVisit(forumAnnouncementVisit)
+    }
+    setForumAnnouncementOpen(false)
+  }
 
   if (isLoading) {
     return (
@@ -82,6 +111,11 @@ function AppContent() {
         onReportInfo={() => setReportInfoOpen(true)}
       />
       <ReportContentInfoModal open={reportInfoOpen} onClose={() => setReportInfoOpen(false)} />
+      <ForumAnnouncementModal
+        open={forumAnnouncementOpen}
+        onClose={closeForumAnnouncement}
+        onOpenForum={() => navigate('forum')}
+      />
     </div>
     </WeekCompetitionProvider>
   )
