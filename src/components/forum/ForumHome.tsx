@@ -1,11 +1,12 @@
 import { ChevronRight, MessageSquare, Pin } from 'lucide-react'
 import { formatForumDate } from '../../lib/forumFormat'
 import { isForumBoardUnread } from '../../lib/forumReadStorage'
-import type { ForumCategory, ForumPinnedThread } from '../../types/forum'
+import type { ForumCategory, ForumPinnedBoard, ForumPinnedThread } from '../../types/forum'
 import { ForumUnreadBadge } from './ForumUnreadBadge'
 
 interface ForumHomeProps {
   categories: ForumCategory[]
+  pinnedBoards: ForumPinnedBoard[]
   pinnedThreads: ForumPinnedThread[]
   readRevision: number
   onOpenBoard: (boardId: string) => void
@@ -14,6 +15,7 @@ interface ForumHomeProps {
 
 export function ForumHome({
   categories,
+  pinnedBoards,
   pinnedThreads,
   readRevision,
   onOpenBoard,
@@ -23,11 +25,50 @@ export function ForumHome({
 
   return (
     <div className="space-y-6">
+      {pinnedBoards.length > 0 && (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-neutral-50">
+            <Pin className="h-5 w-5 text-amber-400" />
+            Angepinnte Unterbereiche
+          </h2>
+          <ul className="overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/5">
+            {pinnedBoards.map((board, index) => (
+              <li
+                key={board.id}
+                className={index > 0 ? 'border-t border-amber-500/15' : undefined}
+              >
+                <button
+                  type="button"
+                  onClick={() => onOpenBoard(board.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-amber-500/10"
+                >
+                  <MessageSquare className="h-5 w-5 shrink-0 text-amber-400/90" />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-medium text-neutral-100">
+                      {board.name}
+                      {isForumBoardUnread(board.id, board.latestActivityAt) && <ForumUnreadBadge />}
+                    </p>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      {board.categoryName}
+                      {board.description ? ` · ${board.description}` : ''}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs tabular-nums text-neutral-600">
+                    {board.threadCount} {board.threadCount === 1 ? 'Thema' : 'Themen'}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-neutral-600" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {pinnedThreads.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-neutral-50">
             <Pin className="h-5 w-5 text-amber-400" />
-            Angepinnt
+            Angepinnte Themen
           </h2>
           <ul className="overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/5">
             {pinnedThreads.map((thread, index) => (

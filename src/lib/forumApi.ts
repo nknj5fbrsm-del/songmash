@@ -2,6 +2,7 @@ import type {
   ForumBoardDetail,
   ForumCategory,
   ForumLoungeMessage,
+  ForumPinnedBoard,
   ForumPinnedThread,
   ForumPost,
   ForumThreadDetail,
@@ -91,6 +92,7 @@ export async function forumLogin(password: string): Promise<void> {
 
 export type ForumStructure = {
   categories: ForumCategory[]
+  pinnedBoards: ForumPinnedBoard[]
   pinnedThreads: ForumPinnedThread[]
 }
 

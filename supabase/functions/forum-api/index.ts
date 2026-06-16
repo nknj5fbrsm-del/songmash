@@ -204,6 +204,20 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
     }
   }
 
+  const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name as string]))
+
+  const pinnedBoards = (boards ?? [])
+    .filter((b) => b.is_pinned)
+    .map((b) => ({
+      id: b.id,
+      categoryId: b.category_id,
+      name: b.name,
+      description: b.description ?? undefined,
+      categoryName: categoryNameById.get(b.category_id) ?? '',
+      threadCount: threadCounts.get(b.id) ?? 0,
+      latestActivityAt: latestActivityByBoard.get(b.id) ?? undefined,
+    }))
+
   return json({
     categories: (categories ?? []).map((c) => ({
       id: c.id,
@@ -223,6 +237,7 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
           latestActivityAt: latestActivityByBoard.get(b.id) ?? undefined,
         })),
     })),
+    pinnedBoards,
     pinnedThreads: await loadPinnedThreads(supabase),
   })
 }

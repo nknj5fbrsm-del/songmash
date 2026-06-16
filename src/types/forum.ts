@@ -9,6 +9,16 @@ export interface ForumPinnedThread {
   updatedAt: string
 }
 
+export interface ForumPinnedBoard {
+  id: string
+  categoryId: string
+  name: string
+  description?: string
+  categoryName: string
+  threadCount: number
+  latestActivityAt?: string
+}
+
 export interface ForumBoardSummary {
   id: string
   categoryId: string
