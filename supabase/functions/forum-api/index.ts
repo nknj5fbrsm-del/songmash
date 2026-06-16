@@ -11,7 +11,18 @@ import {
   assertForumLoungeRateLimit,
   recordForumLoungeMessage,
 } from '../_shared/forumLoungeRateLimit.ts'
-import { requireForumSession, verifyForumSession } from '../_shared/forumSession.ts'
+import {
+  assertOwnAuthor,
+  ForumAccessError,
+  resolveAuthorName,
+  resolveForumAccess,
+  type ForumAccess,
+} from '../_shared/forumAccess.ts'
+import {
+  generateForumAccessCode,
+  hashForumAccessCode,
+} from '../_shared/forumMember.ts'
+import { requireForumSession } from '../_shared/forumSession.ts'
 import { isModeratorRequest, requireModeratorRequest } from '../_shared/moderatorRequest.ts'
 
 const corsHeaders = {
@@ -47,6 +58,9 @@ type ActionBody = {
   pinned?: boolean
   since?: string
   messageId?: string
+  memberId?: string
+  note?: string
+  active?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -67,7 +81,7 @@ Deno.serve(async (req) => {
   }
 
   const session = requireForumSession(req)
-  if (!session || !(await verifyForumSession(session, forumSecret))) {
+  if (!session) {
     return json({ error: 'Forum-Session ungültig oder abgelaufen. Bitte erneut anmelden.' }, 401)
   }
 
@@ -78,6 +92,16 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
+    let access: ForumAccess
+    try {
+      access = await resolveForumAccess(session, forumSecret, supabase)
+    } catch (err) {
+      if (err instanceof ForumAccessError) {
+        return json({ error: err.message }, err.status)
+      }
+      throw err
+    }
+
     switch (action) {
       case 'structure':
         return await handleStructure(supabase)
@@ -86,15 +110,15 @@ Deno.serve(async (req) => {
       case 'thread':
         return await handleThread(supabase, body.threadId)
       case 'create_thread':
-        return await handleCreateThread(supabase, body)
+        return await handleCreateThread(supabase, body, access)
       case 'create_post':
-        return await handleCreatePost(supabase, body, req)
+        return await handleCreatePost(supabase, body, req, access)
       case 'delete_post':
-        return await handleDeletePost(supabase, body, req)
+        return await handleDeletePost(supabase, body, req, access)
       case 'update_post':
-        return await handleUpdatePost(supabase, body, req)
+        return await handleUpdatePost(supabase, body, req, access)
       case 'update_thread':
-        return await handleUpdateThread(supabase, body, req)
+        return await handleUpdateThread(supabase, body, req, access)
       case 'admin_upsert_category':
         return await handleAdminUpsertCategory(supabase, body, req)
       case 'admin_delete_category':
@@ -118,9 +142,21 @@ Deno.serve(async (req) => {
       case 'list_lounge_messages':
         return await handleListLoungeMessages(supabase, body)
       case 'send_lounge_message':
-        return await handleSendLoungeMessage(supabase, body, session)
+        return await handleSendLoungeMessage(supabase, body, session, access)
       case 'delete_lounge_message':
         return await handleDeleteLoungeMessage(supabase, body, req)
+      case 'admin_list_members':
+        return await handleAdminListMembers(supabase, req)
+      case 'admin_create_member':
+        return await handleAdminCreateMember(supabase, body, req)
+      case 'admin_update_member':
+        return await handleAdminUpdateMember(supabase, body, req)
+      case 'admin_set_member_active':
+        return await handleAdminSetMemberActive(supabase, body, req)
+      case 'admin_regenerate_member_code':
+        return await handleAdminRegenerateMemberCode(supabase, body, req)
+      case 'admin_delete_member':
+        return await handleAdminDeleteMember(supabase, body, req)
       default:
         return json({ error: 'Unbekannte Aktion.' }, 400)
     }
@@ -160,11 +196,12 @@ async function loadPostForAction(
   return post
 }
 
-function assertOwnPost(body: ActionBody, authorNameInDb: string): void {
-  const authorName = trimAuthor(body.authorName)
-  if (authorNameInDb !== authorName) {
-    throw new Error('Du kannst nur eigene Beiträge bearbeiten oder löschen.')
+function trimMemberDisplayName(name: string | undefined): string {
+  const trimmed = name?.trim() ?? ''
+  if (trimmed.length < 2 || trimmed.length > MAX_AUTHOR) {
+    throw new Error(`Anzeigename muss 2–${MAX_AUTHOR} Zeichen haben.`)
   }
+  return trimmed
 }
 
 async function handleStructure(supabase: ReturnType<typeof createClient>) {
@@ -386,11 +423,15 @@ async function handleThread(supabase: ReturnType<typeof createClient>, threadId?
   })
 }
 
-async function handleCreateThread(supabase: ReturnType<typeof createClient>, body: ActionBody) {
+async function handleCreateThread(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  access: ForumAccess,
+) {
   const boardId = body.boardId?.trim()
   const title = body.title?.trim() ?? ''
   const postBody = body.body?.trim() ?? ''
-  const authorName = trimAuthor(body.authorName)
+  const authorName = resolveAuthorName(access, body.authorName, trimAuthor)
 
   if (!boardId) throw new Error('boardId fehlt.')
   if (title.length < 3 || title.length > MAX_TITLE) {
@@ -440,10 +481,11 @@ async function handleCreatePost(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
   req: Request,
+  access: ForumAccess,
 ) {
   const threadId = body.threadId?.trim()
   const postBody = body.body?.trim() ?? ''
-  const authorName = trimAuthor(body.authorName)
+  const authorName = resolveAuthorName(access, body.authorName, trimAuthor)
 
   if (!threadId) throw new Error('threadId fehlt.')
   if (postBody.length < 1 || postBody.length > MAX_BODY) {
@@ -495,6 +537,7 @@ async function handleDeletePost(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
   req: Request,
+  access: ForumAccess,
 ) {
   const postId = body.postId?.trim()
   if (!postId) throw new Error('postId fehlt.')
@@ -502,7 +545,7 @@ async function handleDeletePost(
   const post = await loadPostForAction(supabase, postId)
   const asModerator = await isModeratorRequest(req)
   if (!asModerator) {
-    assertOwnPost(body, post.author_name)
+    assertOwnAuthor(access, post.author_name, body.authorName, trimAuthor)
   }
 
   const { data: threadPosts, error: listError } = await supabase
@@ -549,6 +592,7 @@ async function handleUpdatePost(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
   req: Request,
+  access: ForumAccess,
 ) {
   const postId = body.postId?.trim()
   const postBody = body.body?.trim() ?? ''
@@ -560,7 +604,7 @@ async function handleUpdatePost(
   const post = await loadPostForAction(supabase, postId)
   const asModerator = await isModeratorRequest(req)
   if (!asModerator) {
-    assertOwnPost(body, post.author_name)
+    assertOwnAuthor(access, post.author_name, body.authorName, trimAuthor)
   }
 
   if (!asModerator) {
@@ -611,6 +655,7 @@ async function handleUpdateThread(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
   req: Request,
+  access: ForumAccess,
 ) {
   const threadId = body.threadId?.trim()
   const title = body.title?.trim() ?? ''
@@ -630,7 +675,7 @@ async function handleUpdateThread(
 
   const asModerator = await isModeratorRequest(req)
   if (!asModerator) {
-    const authorName = trimAuthor(body.authorName)
+    const authorName = resolveAuthorName(access, body.authorName, trimAuthor)
     if (thread.author_name !== authorName) {
       throw new Error('Du kannst nur eigene Themen umbenennen.')
     }
@@ -1077,8 +1122,9 @@ async function handleSendLoungeMessage(
   supabase: ReturnType<typeof createClient>,
   body: ActionBody,
   sessionToken: string,
+  access: ForumAccess,
 ) {
-  const authorName = trimAuthor(body.authorName)
+  const authorName = resolveAuthorName(access, body.authorName, trimAuthor)
   const messageBody = body.body?.trim() ?? ''
 
   if (messageBody.length < 1 || messageBody.length > MAX_LOUNGE_BODY) {
@@ -1115,6 +1161,181 @@ async function handleDeleteLoungeMessage(
   if (!messageId) throw new Error('messageId fehlt.')
 
   const { error } = await supabase.from('forum_lounge_messages').delete().eq('id', messageId)
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true })
+}
+
+type MemberRow = {
+  id: string
+  display_name: string
+  is_active: boolean
+  note: string | null
+  created_at: string
+  last_seen_at: string | null
+}
+
+function mapMember(row: MemberRow) {
+  return {
+    id: row.id,
+    displayName: row.display_name,
+    isActive: row.is_active,
+    note: row.note ?? undefined,
+    createdAt: row.created_at,
+    lastSeenAt: row.last_seen_at ?? undefined,
+  }
+}
+
+async function handleAdminListMembers(
+  supabase: ReturnType<typeof createClient>,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const { data, error } = await supabase
+    .from('forum_members')
+    .select('id, display_name, is_active, note, created_at, last_seen_at')
+    .order('display_name', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return json({ members: (data ?? []).map(mapMember) })
+}
+
+async function handleAdminCreateMember(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const displayName = trimMemberDisplayName(body.name)
+  const note = body.note?.trim().slice(0, 250) || null
+  const accessCode = generateForumAccessCode()
+  const accessCodeHash = await hashForumAccessCode(accessCode)
+
+  const { data, error } = await supabase
+    .from('forum_members')
+    .insert({
+      display_name: displayName,
+      access_code_hash: accessCodeHash,
+      note,
+    })
+    .select('id, display_name, is_active, note, created_at, last_seen_at')
+    .single()
+
+  if (error) {
+    if (error.message.includes('unique') || error.message.includes('duplicate')) {
+      throw new Error('Dieser Anzeigename ist bereits vergeben.')
+    }
+    throw new Error(error.message)
+  }
+
+  return json({
+    member: mapMember(data),
+    accessCode,
+  })
+}
+
+async function handleAdminUpdateMember(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const memberId = body.memberId?.trim()
+  if (!memberId) throw new Error('memberId fehlt.')
+
+  const displayName = body.name !== undefined ? trimMemberDisplayName(body.name) : undefined
+  const note =
+    body.note !== undefined ? body.note.trim().slice(0, 250) || null : undefined
+
+  const update: Record<string, unknown> = {}
+  if (displayName !== undefined) update.display_name = displayName
+  if (note !== undefined) update.note = note
+  if (Object.keys(update).length === 0) {
+    throw new Error('Keine Änderungen angegeben.')
+  }
+
+  const { data, error } = await supabase
+    .from('forum_members')
+    .update(update)
+    .eq('id', memberId)
+    .select('id, display_name, is_active, note, created_at, last_seen_at')
+    .single()
+
+  if (error) {
+    if (error.message.includes('unique') || error.message.includes('duplicate')) {
+      throw new Error('Dieser Anzeigename ist bereits vergeben.')
+    }
+    throw new Error(error.message)
+  }
+  if (!data) throw new Error('Mitglied nicht gefunden.')
+
+  return json({ member: mapMember(data) })
+}
+
+async function handleAdminSetMemberActive(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const memberId = body.memberId?.trim()
+  if (!memberId) throw new Error('memberId fehlt.')
+  if (typeof body.active !== 'boolean') throw new Error('active muss true oder false sein.')
+
+  const { data, error } = await supabase
+    .from('forum_members')
+    .update({ is_active: body.active })
+    .eq('id', memberId)
+    .select('id, display_name, is_active, note, created_at, last_seen_at')
+    .single()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Mitglied nicht gefunden.')
+
+  return json({ member: mapMember(data) })
+}
+
+async function handleAdminRegenerateMemberCode(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const memberId = body.memberId?.trim()
+  if (!memberId) throw new Error('memberId fehlt.')
+
+  const accessCode = generateForumAccessCode()
+  const accessCodeHash = await hashForumAccessCode(accessCode)
+
+  const { data, error } = await supabase
+    .from('forum_members')
+    .update({ access_code_hash: accessCodeHash })
+    .eq('id', memberId)
+    .select('id, display_name, is_active, note, created_at, last_seen_at')
+    .single()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Mitglied nicht gefunden.')
+
+  return json({ member: mapMember(data), accessCode })
+}
+
+async function handleAdminDeleteMember(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const memberId = body.memberId?.trim()
+  if (!memberId) throw new Error('memberId fehlt.')
+
+  const { error } = await supabase.from('forum_members').delete().eq('id', memberId)
   if (error) throw new Error(error.message)
 
   return json({ ok: true })

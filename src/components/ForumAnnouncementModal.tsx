@@ -76,8 +76,10 @@ export function ForumAnnouncementModal({
             Du findest es im Footer unter „Forum“.
           </p>
           <p>
-            Der Zugang ist passwortgeschützt. Wenn du mindestens einen Song eingereicht hast, kannst
-            du das Passwort per E-Mail anfragen:
+            Der Zugang ist geschützt — du brauchst einen persönlichen Zugangscode. Wenn du
+            mindestens einen Song eingereicht hast, kannst du ihn per E-Mail anfragen. Bitte nenne
+            dabei deinen <strong className="text-neutral-100">gewünschten Anzeigenamen</strong> und
+            deinen Song.
           </p>
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3">
             <p className="mb-1 text-xs uppercase tracking-wider text-neutral-500">Kontakt</p>
@@ -92,7 +94,7 @@ export function ForumAnnouncementModal({
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <a href={buildForumPasswordRequestMailto()} className="btn-secondary flex-1 text-center">
-            Passwort per E-Mail anfragen
+            Zugangscode per E-Mail anfragen
           </a>
           <button
             type="button"

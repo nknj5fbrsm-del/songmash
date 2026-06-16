@@ -6,19 +6,19 @@ export function buildForumPasswordRequestMailto(): string {
     '',
     'ich möchte Zugang zum SongMash Community-Forum.',
     '',
+    'Gewünschter Anzeigename im Forum:',
+    '',
     'Ich habe mindestens einen Song auf SongMash eingereicht:',
     '',
-    'Titel: ',
-    'Künstlername: ',
+    'Titel:',
+    'Künstlername:',
     '',
     '—',
     'Gesendet über die Forum-Zugangsseite auf SongMash.',
   ].join('\n')
 
-  const params = new URLSearchParams({
-    subject: 'SongMash Forum: Passwort-Anfrage',
-    body,
-  })
+  const subject = 'SongMash Forum: Zugangscode-Anfrage'
 
-  return `mailto:${legal.email}?${params.toString()}`
+  // encodeURIComponent statt URLSearchParams — iOS-Mail decodiert + oft nicht zu Leerzeichen
+  return `mailto:${legal.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }

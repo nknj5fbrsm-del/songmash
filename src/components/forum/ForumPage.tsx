@@ -12,6 +12,7 @@ import {
 import {
   clearForumSession,
   readForumDisplayName,
+  readForumIsMember,
   readForumSession,
   writeForumDisplayName,
 } from '../../lib/forumStorage'
@@ -43,6 +44,7 @@ export function ForumPage() {
 
   const [hasSession, setHasSession] = useState(() => Boolean(readForumSession()))
   const [displayName, setDisplayName] = useState(() => readForumDisplayName())
+  const [isMemberLogin, setIsMemberLogin] = useState(() => readForumIsMember())
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(displayName)
 
@@ -208,6 +210,7 @@ export function ForumPage() {
   const handleLogout = () => {
     clearForumSession()
     setHasSession(false)
+    setIsMemberLogin(false)
     goHomeInternal()
     setCategories([])
     setPinnedBoards([])
@@ -237,7 +240,19 @@ export function ForumPage() {
   }
 
   if (!hasSession) {
-    return <ForumGate onSuccess={() => setHasSession(true)} />
+    return (
+      <ForumGate
+        onSuccess={(nameFromLogin) => {
+          if (nameFromLogin) {
+            setDisplayName(nameFromLogin)
+            setIsMemberLogin(true)
+          } else {
+            setIsMemberLogin(readForumIsMember())
+          }
+          setHasSession(true)
+        }}
+      />
+    )
   }
 
   if (!displayName) {
@@ -277,14 +292,16 @@ export function ForumPage() {
                 <span>
                   Angemeldet als <span className="text-neutral-300">{displayName}</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setEditingName(true)}
-                  className="inline-flex items-center gap-1 text-neutral-600 hover:text-neutral-400"
-                >
-                  <Pencil className="h-3 w-3" />
-                  Name ändern
-                </button>
+                {!isMemberLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    className="inline-flex items-center gap-1 text-neutral-600 hover:text-neutral-400"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Name ändern
+                  </button>
+                )}
               </>
             )}
           </div>

@@ -1,5 +1,16 @@
-import { useEffect, useState } from 'react'
-import { ChevronDown, Download, Loader2, Pencil, Pin, PinOff, Settings, Trash2, X } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  ChevronDown,
+  Download,
+  Loader2,
+  Pencil,
+  Pin,
+  PinOff,
+  Settings,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react'
 import {
   ForumApiError,
   forumAdminDeleteBoard,
@@ -10,6 +21,7 @@ import {
   forumAdminUpsertCategory,
 } from '../../lib/forumApi'
 import type { ForumBoardSummary, ForumCategory } from '../../types/forum'
+import { ForumMembersPanel } from './ForumMembersPanel'
 
 interface ForumAdminPanelProps {
   categories: ForumCategory[]
@@ -21,9 +33,44 @@ type EditTarget =
   | { type: 'board'; id: string }
   | null
 
+function ForumAdminSection({
+  title,
+  icon: Icon,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  icon: typeof Settings
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-amber-200/90"
+      >
+        <span className="inline-flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          {title}
+        </span>
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="space-y-4 border-t border-amber-500/15 px-4 py-4">{children}</div>
+      )}
+    </div>
+  )
+}
+
 export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps) {
-  const [open, setOpen] = useState(false)
-  const [error, setError] = useState('')
+  const [structureOpen, setStructureOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [structureError, setStructureError] = useState('')
+  const [membersError, setMembersError] = useState('')
   const [catName, setCatName] = useState('')
   const [catDescription, setCatDescription] = useState('')
   const [boardName, setBoardName] = useState('')
@@ -47,12 +94,12 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
   }, [categories])
 
   const run = async (fn: () => Promise<void>) => {
-    setError('')
+    setStructureError('')
     try {
       await fn()
       onChanged()
     } catch (err) {
-      setError(err instanceof ForumApiError ? err.message : 'Aktion fehlgeschlagen.')
+      setStructureError(err instanceof ForumApiError ? err.message : 'Aktion fehlgeschlagen.')
     }
   }
 
@@ -79,15 +126,15 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
   const saveEdit = async () => {
     if (!editTarget) return
     if (!editName.trim()) {
-      setError('Bitte einen Namen eingeben.')
+      setStructureError('Bitte einen Namen eingeben.')
       return
     }
     if (editTarget.type === 'board' && !editBoardCategoryId) {
-      setError('Bitte eine Kategorie auswählen.')
+      setStructureError('Bitte eine Kategorie auswählen.')
       return
     }
 
-    setError('')
+    setStructureError('')
     setEditSaving(true)
     try {
       if (editTarget.type === 'category') {
@@ -107,7 +154,7 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
       cancelEdit()
       onChanged()
     } catch (err) {
-      setError(err instanceof ForumApiError ? err.message : 'Speichern fehlgeschlagen.')
+      setStructureError(err instanceof ForumApiError ? err.message : 'Speichern fehlgeschlagen.')
     } finally {
       setEditSaving(false)
     }
@@ -168,21 +215,13 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
   )
 
   return (
-    <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-amber-200/90"
+    <div className="mb-6 space-y-3">
+      <ForumAdminSection
+        title="Forum-Verwaltung"
+        icon={Settings}
+        open={structureOpen}
+        onToggle={() => setStructureOpen((v) => !v)}
       >
-        <span className="inline-flex items-center gap-2">
-          <Settings className="h-4 w-4" />
-          Forum-Verwaltung
-        </span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="space-y-4 border-t border-amber-500/15 px-4 py-4">
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
             <p className="mb-2 text-sm text-neutral-400">
               Vollständige Sicherung als JSON-Datei (Kategorien, Themen, Beiträge).
@@ -191,12 +230,12 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
               type="button"
               disabled={backupLoading}
               onClick={async () => {
-                setError('')
+                setStructureError('')
                 setBackupLoading(true)
                 try {
                   await forumAdminDownloadBackup()
                 } catch (err) {
-                  setError(
+                  setStructureError(
                     err instanceof ForumApiError ? err.message : 'Backup fehlgeschlagen.',
                   )
                 } finally {
@@ -228,7 +267,7 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                 onClick={() =>
                   run(async () => {
                     if (!catName.trim()) {
-                      setError('Bitte einen Kategorienamen eingeben.')
+                      setStructureError('Bitte einen Kategorienamen eingeben.')
                       return
                     }
                     const newId = await forumAdminUpsertCategory({
@@ -285,11 +324,11 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                 onClick={() =>
                   run(async () => {
                     if (!boardCategoryId) {
-                      setError('Bitte zuerst eine Kategorie anlegen oder auswählen.')
+                      setStructureError('Bitte zuerst eine Kategorie anlegen oder auswählen.')
                       return
                     }
                     if (!boardName.trim()) {
-                      setError('Bitte einen Namen für den Unterbereich eingeben.')
+                      setStructureError('Bitte einen Namen für den Unterbereich eingeben.')
                       return
                     }
                     await forumAdminUpsertBoard({
@@ -430,9 +469,22 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
             })}
           </ul>
 
-          {error && <p className="text-sm text-red-300">{error}</p>}
-        </div>
-      )}
+          {structureError && <p className="text-sm text-red-300">{structureError}</p>}
+      </ForumAdminSection>
+
+      <ForumAdminSection
+        title="Mitgliederverwaltung"
+        icon={Users}
+        open={membersOpen}
+        onToggle={() => setMembersOpen((v) => !v)}
+      >
+        <ForumMembersPanel
+          embedded
+          enabled={membersOpen}
+          onError={setMembersError}
+        />
+        {membersError && <p className="text-sm text-red-300">{membersError}</p>}
+      </ForumAdminSection>
     </div>
   )
 }

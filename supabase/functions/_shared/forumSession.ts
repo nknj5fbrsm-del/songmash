@@ -25,10 +25,20 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
   )
 }
 
-export async function createForumSession(secret: string): Promise<string> {
-  const payload = {
+export type ForumSessionPayload = {
+  exp: number
+  n: string
+  memberId?: string
+}
+
+export async function createForumSession(
+  secret: string,
+  options?: { memberId?: string },
+): Promise<string> {
+  const payload: ForumSessionPayload = {
     exp: Date.now() + SESSION_TTL_MS,
     n: crypto.randomUUID(),
+    ...(options?.memberId ? { memberId: options.memberId } : {}),
   }
   const payloadPart = toBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
   const key = await hmacKey(secret)
@@ -36,9 +46,12 @@ export async function createForumSession(secret: string): Promise<string> {
   return `${payloadPart}.${toBase64Url(new Uint8Array(sig))}`
 }
 
-export async function verifyForumSession(token: string, secret: string): Promise<boolean> {
+export async function parseForumSession(
+  token: string,
+  secret: string,
+): Promise<ForumSessionPayload | null> {
   const dot = token.lastIndexOf('.')
-  if (dot <= 0) return false
+  if (dot <= 0) return null
 
   const payloadPart = token.slice(0, dot)
   const sigPart = token.slice(dot + 1)
@@ -52,15 +65,29 @@ export async function verifyForumSession(token: string, secret: string): Promise
       sigBytes,
       new TextEncoder().encode(payloadPart),
     )
-    if (!valid) return false
+    if (!valid) return null
 
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(payloadPart))) as {
       exp?: number
+      n?: string
+      memberId?: string
     }
-    return typeof payload.exp === 'number' && payload.exp > Date.now()
+    if (typeof payload.exp !== 'number' || payload.exp <= Date.now()) return null
+    if (typeof payload.n !== 'string') return null
+
+    return {
+      exp: payload.exp,
+      n: payload.n,
+      memberId: typeof payload.memberId === 'string' ? payload.memberId : undefined,
+    }
   } catch {
-    return false
+    return null
   }
+}
+
+export async function verifyForumSession(token: string, secret: string): Promise<boolean> {
+  const payload = await parseForumSession(token, secret)
+  return payload !== null
 }
 
 export function requireForumSession(req: Request): string | null {

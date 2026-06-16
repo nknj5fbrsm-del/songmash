@@ -95,3 +95,12 @@ export interface ForumLoungeMessage {
   body: string
   createdAt: string
 }
+
+export interface ForumMember {
+  id: string
+  displayName: string
+  isActive: boolean
+  note?: string
+  createdAt: string
+  lastSeenAt?: string
+}

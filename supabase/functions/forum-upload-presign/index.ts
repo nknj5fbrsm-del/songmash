@@ -5,7 +5,8 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { requireForumSession, verifyForumSession } from '../_shared/forumSession.ts'
+import { ForumAccessError, resolveForumAccess } from '../_shared/forumAccess.ts'
+import { requireForumSession } from '../_shared/forumSession.ts'
 import { recordForumUpload } from '../_shared/forumUploadLimit.ts'
 import { presignPutObject } from '../_shared/r2.ts'
 
@@ -47,8 +48,19 @@ Deno.serve(async (req) => {
   }
 
   const sessionToken = requireForumSession(req)
-  if (!sessionToken || !(await verifyForumSession(sessionToken, forumSecret))) {
+  if (!sessionToken) {
     return json({ error: 'Forum-Session ungültig oder abgelaufen. Bitte erneut anmelden.' }, 401)
+  }
+
+  const supabase = createClient(supabaseUrl, serviceKey)
+
+  try {
+    await resolveForumAccess(sessionToken, forumSecret, supabase)
+  } catch (err) {
+    if (err instanceof ForumAccessError) {
+      return json({ error: err.message }, err.status)
+    }
+    throw err
   }
 
   try {
@@ -81,7 +93,6 @@ Deno.serve(async (req) => {
       return json({ error: 'Ungültige Dateigröße.' }, 400)
     }
 
-    const supabase = createClient(supabaseUrl, serviceKey)
     await recordForumUpload(supabase, sessionToken, kind as 'image' | 'audio')
 
     const folder = FOLDER_BY_KIND[kind]

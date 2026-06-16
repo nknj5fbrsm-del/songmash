@@ -2,13 +2,14 @@ import type {
   ForumBoardDetail,
   ForumCategory,
   ForumLoungeMessage,
+  ForumMember,
   ForumPinnedBoard,
   ForumPinnedThread,
   ForumPost,
   ForumThreadDetail,
   ForumThreadSummary,
 } from '../types/forum'
-import { clearForumSession, readForumSession, writeForumSession } from './forumStorage'
+import { clearForumSession, readForumSession, writeForumDisplayName, writeForumMemberLogin, writeForumSession } from './forumStorage'
 import { readModeratorSession } from './moderatorStorage'
 import { isSupabaseConfigured } from './supabaseClient'
 
@@ -73,21 +74,43 @@ async function parseResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
       clearForumSession()
     }
+    if (response.status === 403 && data.error?.includes('gesperrt')) {
+      clearForumSession()
+    }
     throw new ForumApiError(data.error ?? response.statusText, response.status)
   }
 
   return data
 }
 
-export async function forumLogin(password: string): Promise<void> {
+export type ForumLoginResult = {
+  loginType: 'legacy' | 'member'
+  displayName?: string
+}
+
+export async function forumLogin(credential: string): Promise<ForumLoginResult> {
   const response = await fetch(`${baseUrl()}/functions/v1/forum-auth`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ password: credential }),
   })
 
-  const data = await parseResponse<{ sessionToken: string }>(response)
+  const data = await parseResponse<{
+    sessionToken: string
+    loginType?: 'legacy' | 'member'
+    displayName?: string
+  }>(response)
   writeForumSession(data.sessionToken)
+
+  const loginType = data.loginType ?? 'legacy'
+  if (loginType === 'member' && data.displayName) {
+    writeForumDisplayName(data.displayName)
+    writeForumMemberLogin(true)
+    return { loginType, displayName: data.displayName }
+  }
+
+  writeForumMemberLogin(false)
+  return { loginType }
 }
 
 export type ForumStructure = {
@@ -411,6 +434,78 @@ export async function forumDeleteLoungeMessage(messageId: string): Promise<void>
     method: 'POST',
     headers: forumModeratorHeaders(),
     body: JSON.stringify({ action: 'delete_lounge_message', messageId }),
+  })
+
+  await parseResponse(response)
+}
+
+export async function forumAdminListMembers(): Promise<{ members: ForumMember[] }> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_list_members' }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumAdminCreateMember(params: {
+  name: string
+  note?: string
+}): Promise<{ member: ForumMember; accessCode: string }> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_create_member', ...params }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumAdminUpdateMember(params: {
+  memberId: string
+  name?: string
+  note?: string
+}): Promise<{ member: ForumMember }> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_update_member', ...params }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumAdminSetMemberActive(
+  memberId: string,
+  active: boolean,
+): Promise<{ member: ForumMember }> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_set_member_active', memberId, active }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumAdminRegenerateMemberCode(
+  memberId: string,
+): Promise<{ member: ForumMember; accessCode: string }> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_regenerate_member_code', memberId }),
+  })
+
+  return parseResponse(response)
+}
+
+export async function forumAdminDeleteMember(memberId: string): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_delete_member', memberId }),
   })
 
   await parseResponse(response)

@@ -4,11 +4,11 @@ import { buildForumPasswordRequestMailto } from '../../lib/buildForumPasswordReq
 import { ForumApiError, forumLogin } from '../../lib/forumApi'
 
 interface ForumGateProps {
-  onSuccess: () => void
+  onSuccess: (displayName?: string) => void
 }
 
 export function ForumGate({ onSuccess }: ForumGateProps) {
-  const [password, setPassword] = useState('')
+  const [credential, setCredential] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -17,8 +17,8 @@ export function ForumGate({ onSuccess }: ForumGateProps) {
     setError('')
     setLoading(true)
     try {
-      await forumLogin(password)
-      onSuccess()
+      const result = await forumLogin(credential)
+      onSuccess(result.displayName)
     } catch (err) {
       setError(err instanceof ForumApiError ? err.message : 'Anmeldung fehlgeschlagen.')
     } finally {
@@ -32,22 +32,23 @@ export function ForumGate({ onSuccess }: ForumGateProps) {
         <Lock className="mx-auto mb-3 h-10 w-10 text-lime-400" />
         <h1 className="page-title text-2xl">Community-Forum</h1>
         <p className="page-subtitle text-sm">
-          Geschützter Bereich — gemeinsames Passwort eingeben.
+          Geschützter Bereich — persönlichen Zugangscode oder (übergangsweise) gemeinsames
+          Passwort eingeben.
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
-          <label htmlFor="forum-password" className="mb-1.5 block text-sm text-neutral-400">
-            Passwort
+          <label htmlFor="forum-credential" className="mb-1.5 block text-sm text-neutral-400">
+            Zugangscode oder Passwort
           </label>
           <input
-            id="forum-password"
+            id="forum-credential"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={credential}
+            onChange={(e) => setCredential(e.target.value)}
             className="input-field"
-            placeholder="Forum-Passwort"
+            placeholder="SM-XXXX-XXXX oder Forum-Passwort"
             autoComplete="current-password"
             required
           />
@@ -60,15 +61,17 @@ export function ForumGate({ onSuccess }: ForumGateProps) {
       </form>
 
       <p className="mt-6 text-center text-sm leading-relaxed text-neutral-500">
-        Hast du schon ein Passwort? Oben eingeben und betreten. Noch keins? Wenn du mindestens
-        einen Song auf SongMash eingereicht hast (mit Künstlernamen), kannst du es per{' '}
+        Noch keinen persönlichen Code? Wenn du mindestens einen Song auf SongMash eingereicht hast,
+        kannst du einen per{' '}
         <a
           href={buildForumPasswordRequestMailto()}
           className="text-lime-400/90 hover:text-lime-300"
         >
           E-Mail anfragen
-        </a>{' '}
-        (Kontakt wie im Impressum).
+        </a>
+        . Bitte nenne dabei deinen{' '}
+        <span className="text-neutral-400">gewünschten Anzeigenamen</span> und deinen eingereichten
+        Song (Kontakt wie im Impressum).
       </p>
     </div>
   )
