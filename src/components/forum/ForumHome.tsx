@@ -29,7 +29,7 @@ export function ForumHome({
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-neutral-50">
             <Pin className="h-5 w-5 text-amber-400" />
-            Angepinnte Unterbereiche
+            Pinned
           </h2>
           <ul className="overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/5">
             {pinnedBoards.map((board, index) => (
@@ -68,7 +68,7 @@ export function ForumHome({
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-neutral-50">
             <Pin className="h-5 w-5 text-amber-400" />
-            Angepinnte Themen
+            Pinned · Themen
           </h2>
           <ul className="overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/5">
             {pinnedThreads.map((thread, index) => (
