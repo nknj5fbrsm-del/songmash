@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, Download, Loader2, Pencil, Settings, Trash2, X } from 'lucide-react'
+import { ChevronDown, Download, Loader2, Pencil, Pin, PinOff, Settings, Trash2, X } from 'lucide-react'
 import {
   ForumApiError,
   forumAdminDeleteBoard,
   forumAdminDeleteCategory,
   forumAdminDownloadBackup,
+  forumAdminPinBoard,
   forumAdminUpsertBoard,
   forumAdminUpsertCategory,
 } from '../../lib/forumApi'
@@ -367,12 +368,34 @@ export function ForumAdminPanel({ categories, onChanged }: ForumAdminPanelProps)
                       ) : (
                       <div className="flex items-center justify-between gap-2 text-neutral-500">
                       <div>
-                        <span>{board.name}</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          {board.isPinned && (
+                            <Pin className="h-3 w-3 shrink-0 text-amber-400" aria-label="Angepinnt" />
+                          )}
+                          {board.name}
+                        </span>
                         {board.description && (
                           <p className="text-xs text-neutral-600">{board.description}</p>
                         )}
                       </div>
                       <div className="flex shrink-0 gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          run(async () => {
+                            await forumAdminPinBoard(board.id, !board.isPinned)
+                          })
+                        }
+                        className="rounded-lg p-1.5 text-neutral-600 hover:bg-neutral-800 hover:text-amber-300"
+                        aria-label={board.isPinned ? 'Unterbereich lösen' : 'Unterbereich anpinnen'}
+                        title={board.isPinned ? 'Lösen' : 'Anpinnen'}
+                      >
+                        {board.isPinned ? (
+                          <PinOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Pin className="h-3.5 w-3.5" />
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={() => startEditBoard(board, cat.id)}

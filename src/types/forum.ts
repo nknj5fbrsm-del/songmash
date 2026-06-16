@@ -15,6 +15,7 @@ export interface ForumBoardSummary {
   name: string
   description?: string
   sortOrder: number
+  isPinned: boolean
   threadCount: number
   latestActivityAt?: string
 }

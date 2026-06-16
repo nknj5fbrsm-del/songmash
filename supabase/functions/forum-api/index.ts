@@ -103,6 +103,8 @@ Deno.serve(async (req) => {
         return await handleAdminUpsertBoard(supabase, body, req)
       case 'admin_delete_board':
         return await handleAdminDeleteBoard(supabase, body, req)
+      case 'admin_pin_board':
+        return await handleAdminPinBoard(supabase, body, req)
       case 'admin_move_thread':
         return await handleAdminMoveThread(supabase, body, req)
       case 'admin_lock_thread':
@@ -176,6 +178,7 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
   const { data: boards, error: boardError } = await supabase
     .from('forum_boards')
     .select('*')
+    .order('is_pinned', { ascending: false })
     .order('sort_order', { ascending: true })
 
   if (boardError) throw new Error(boardError.message)
@@ -215,6 +218,7 @@ async function handleStructure(supabase: ReturnType<typeof createClient>) {
           name: b.name,
           description: b.description ?? undefined,
           sortOrder: b.sort_order,
+          isPinned: b.is_pinned,
           threadCount: threadCounts.get(b.id) ?? 0,
           latestActivityAt: latestActivityByBoard.get(b.id) ?? undefined,
         })),
@@ -744,6 +748,36 @@ async function handleAdminDeleteBoard(
   return json({ ok: true })
 }
 
+async function handleAdminPinBoard(
+  supabase: ReturnType<typeof createClient>,
+  body: ActionBody,
+  req: Request,
+) {
+  await requireModeratorRequest(req)
+
+  const boardId = body.boardId?.trim()
+  if (!boardId) throw new Error('boardId fehlt.')
+  if (typeof body.pinned !== 'boolean') throw new Error('pinned muss true oder false sein.')
+
+  const { data: board, error: findError } = await supabase
+    .from('forum_boards')
+    .select('id')
+    .eq('id', boardId)
+    .maybeSingle()
+
+  if (findError) throw new Error(findError.message)
+  if (!board) throw new Error('Unterbereich nicht gefunden.')
+
+  const { error } = await supabase
+    .from('forum_boards')
+    .update({ is_pinned: body.pinned })
+    .eq('id', boardId)
+
+  if (error) throw new Error(error.message)
+
+  return json({ ok: true, pinned: body.pinned })
+}
+
 async function handleAdminExportForum(supabase: ReturnType<typeof createClient>, req: Request) {
   await requireModeratorRequest(req)
 
@@ -781,6 +815,7 @@ async function handleAdminExportForum(supabase: ReturnType<typeof createClient>,
         name: b.name,
         description: b.description ?? undefined,
         sortOrder: b.sort_order,
+        isPinned: b.is_pinned,
         createdAt: b.created_at,
       })),
       threads: (threads ?? []).map((t) => ({

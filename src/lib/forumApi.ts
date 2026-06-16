@@ -262,6 +262,16 @@ export async function forumAdminDeleteBoard(boardId: string): Promise<void> {
   await parseResponse(response)
 }
 
+export async function forumAdminPinBoard(boardId: string, pinned: boolean): Promise<void> {
+  const response = await fetch(`${baseUrl()}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: forumModeratorHeaders(),
+    body: JSON.stringify({ action: 'admin_pin_board', boardId, pinned }),
+  })
+
+  await parseResponse(response)
+}
+
 export type ForumBackup = {
   version: number
   exportedAt: string
@@ -278,6 +288,7 @@ export type ForumBackup = {
     name: string
     description?: string
     sortOrder: number
+    isPinned?: boolean
     createdAt: string
   }>
   threads: Array<{

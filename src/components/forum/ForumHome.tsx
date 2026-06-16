@@ -76,6 +76,9 @@ export function ForumHome({
                   <MessageSquare className="h-5 w-5 shrink-0 text-lime-400/80" />
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 font-medium text-neutral-100">
+                      {board.isPinned && (
+                        <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-label="Angepinnt" />
+                      )}
                       {board.name}
                       {isForumBoardUnread(board.id, board.latestActivityAt) && <ForumUnreadBadge />}
                     </p>
