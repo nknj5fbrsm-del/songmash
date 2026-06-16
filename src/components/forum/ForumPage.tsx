@@ -4,11 +4,16 @@ import { useSongs } from '../../context/SongContext'
 import { useModerator } from '../../hooks/useModerator'
 import {
   ForumApiError,
+  forumFetchLoungeMessages,
   forumFetchStructure,
   forumFetchThread,
   forumFetchThreads,
   isForumConfigured,
 } from '../../lib/forumApi'
+import {
+  markForumLoungeRead,
+  readForumLoungeLastSeenAt,
+} from '../../lib/forumLoungeReadStorage'
 import {
   clearForumSession,
   readForumDisplayName,
@@ -37,6 +42,8 @@ import { ForumLoungeSheet } from './ForumLoungeSheet'
 import { ForumStickyNav } from './ForumStickyNav'
 
 type ForumView = 'home' | 'board' | 'thread'
+
+const LOUNGE_UNREAD_POLL_MS = 10_000
 
 export function ForumPage() {
   const { songs } = useSongs()
@@ -67,6 +74,7 @@ export function ForumPage() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [readRevision, setReadRevision] = useState(0)
   const [loungeOpen, setLoungeOpen] = useState(false)
+  const [loungeUnread, setLoungeUnread] = useState(false)
 
   const viewRef = useRef(view)
   const activeBoardIdRef = useRef(activeBoardId)
@@ -78,6 +86,45 @@ export function ForumPage() {
   const bumpReadRevision = useCallback(() => {
     setReadRevision((n) => n + 1)
   }, [])
+
+  const markLoungeRead = useCallback((latestCreatedAt: string | null) => {
+    if (latestCreatedAt) {
+      markForumLoungeRead(latestCreatedAt)
+    }
+    setLoungeUnread(false)
+  }, [])
+
+  const checkLoungeUnread = useCallback(async () => {
+    const lastSeen = readForumLoungeLastSeenAt()
+    try {
+      if (!lastSeen) {
+        const data = await forumFetchLoungeMessages()
+        setLoungeUnread(data.messages.length > 0)
+        return
+      }
+      const data = await forumFetchLoungeMessages(lastSeen)
+      setLoungeUnread(data.messages.length > 0)
+    } catch {
+      // Hintergrund-Polling: Fehler still ignorieren
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hasSession || !displayName || loungeOpen) return
+
+    const poll = () => {
+      if (document.visibilityState === 'visible') void checkLoungeUnread()
+    }
+
+    void checkLoungeUnread()
+    const intervalId = window.setInterval(poll, LOUNGE_UNREAD_POLL_MS)
+    document.addEventListener('visibilitychange', poll)
+
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', poll)
+    }
+  }, [hasSession, displayName, loungeOpen, checkLoungeUnread])
 
   const songsById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs])
 
@@ -97,6 +144,15 @@ export function ForumPage() {
   }, [])
 
   const loadBoardInternal = useCallback(async (boardId: string): Promise<boolean> => {
+    if (
+      viewRef.current === 'board' &&
+      activeBoardIdRef.current &&
+      activeBoardIdRef.current !== boardId
+    ) {
+      markForumBoardVisited(activeBoardIdRef.current)
+      bumpReadRevision()
+    }
+
     setLoading(true)
     setError('')
     try {
@@ -108,7 +164,6 @@ export function ForumPage() {
       setThreadDetail(null)
       setPosts([])
       setActiveThreadId(null)
-      markForumBoardVisited(boardId)
       bumpReadRevision()
       return true
     } catch (err) {
@@ -159,6 +214,10 @@ export function ForumPage() {
   )
 
   const goHomeInternal = useCallback(() => {
+    if (viewRef.current === 'board' && activeBoardIdRef.current) {
+      markForumBoardVisited(activeBoardIdRef.current)
+      bumpReadRevision()
+    }
     setView('home')
     setBoardDetail(null)
     setThreads([])
@@ -424,6 +483,7 @@ export function ForumPage() {
         onHome={navigateHome}
         onChat={() => setLoungeOpen((v) => !v)}
         chatOpen={loungeOpen}
+        chatUnread={loungeUnread}
         backDisabled={view === 'home'}
         homeDisabled={view === 'home'}
       />
@@ -433,6 +493,7 @@ export function ForumPage() {
         onClose={() => setLoungeOpen(false)}
         displayName={displayName}
         moderatorUnlocked={moderatorUnlocked}
+        onMarkRead={markLoungeRead}
       />
     </div>
   )

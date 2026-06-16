@@ -1,4 +1,5 @@
 import { ArrowLeft, LayoutGrid, MessageCircle } from 'lucide-react'
+import { ForumUnreadBadge } from './ForumUnreadBadge'
 
 interface ForumStickyNavProps {
   backLabel: string
@@ -6,6 +7,7 @@ interface ForumStickyNavProps {
   onHome: () => void
   onChat: () => void
   chatOpen?: boolean
+  chatUnread?: boolean
   backDisabled?: boolean
   homeDisabled?: boolean
 }
@@ -22,6 +24,7 @@ export function ForumStickyNav({
   onHome,
   onChat,
   chatOpen = false,
+  chatUnread = false,
   backDisabled = false,
   homeDisabled = false,
 }: ForumStickyNavProps) {
@@ -54,12 +57,23 @@ export function ForumStickyNav({
         <button
           type="button"
           onClick={onChat}
-          className={chatOpen ? iconButtonActiveClass : iconButtonClass}
-          aria-label={chatOpen ? 'Chat schließen' : 'Lounge-Chat öffnen'}
+          className={`relative ${chatOpen ? iconButtonActiveClass : iconButtonClass}`}
+          aria-label={
+            chatOpen
+              ? 'Chat schließen'
+              : chatUnread
+                ? 'Lounge-Chat öffnen, neue Nachrichten'
+                : 'Lounge-Chat öffnen'
+          }
           title={chatOpen ? 'Chat schließen' : 'Lounge-Chat'}
           aria-pressed={chatOpen}
         >
           <MessageCircle className="h-5 w-5" />
+          {!chatOpen && chatUnread && (
+            <span className="absolute right-1 top-1">
+              <ForumUnreadBadge label="Neue Chat-Nachrichten" />
+            </span>
+          )}
         </button>
       </nav>
     </div>

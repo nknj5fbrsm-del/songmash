@@ -9,6 +9,7 @@ import {
 } from '../../lib/forumApi'
 import { formatForumDate } from '../../lib/forumFormat'
 import type { ForumLoungeMessage } from '../../types/forum'
+import { latestLoungeCreatedAt } from '../../lib/forumLoungeReadStorage'
 
 const POLL_MS = 10_000
 const STICKY_NAV_OFFSET = 'calc(4.5rem + env(safe-area-inset-bottom, 0px))'
@@ -18,6 +19,7 @@ interface ForumLoungeSheetProps {
   onClose: () => void
   displayName: string
   moderatorUnlocked: boolean
+  onMarkRead?: (latestCreatedAt: string | null) => void
 }
 
 function mergeMessages(
@@ -36,6 +38,7 @@ export function ForumLoungeSheet({
   onClose,
   displayName,
   moderatorUnlocked,
+  onMarkRead,
 }: ForumLoungeSheetProps) {
   const titleId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -59,6 +62,13 @@ export function ForumLoungeSheet({
     el.scrollTop = el.scrollHeight
   }, [])
 
+  const syncReadState = useCallback(
+    (msgs: ForumLoungeMessage[]) => {
+      onMarkRead?.(latestLoungeCreatedAt(msgs))
+    },
+    [onMarkRead],
+  )
+
   const fetchMessages = useCallback(async (initial: boolean) => {
     try {
       const data = await forumFetchLoungeMessages(
@@ -71,11 +81,16 @@ export function ForumLoungeSheet({
         } else {
           lastCreatedAtRef.current = null
         }
+        syncReadState(data.messages)
         return
       }
 
       if (data.messages.length) {
-        setMessages((prev) => mergeMessages(prev, data.messages))
+        setMessages((prev) => {
+          const merged = mergeMessages(prev, data.messages)
+          queueMicrotask(() => syncReadState(merged))
+          return merged
+        })
         lastCreatedAtRef.current = data.messages[data.messages.length - 1].createdAt
       }
     } catch (err) {
@@ -83,7 +98,7 @@ export function ForumLoungeSheet({
         setError(err instanceof ForumApiError ? err.message : 'Chat konnte nicht geladen werden.')
       }
     }
-  }, [])
+  }, [syncReadState])
 
   useEffect(() => {
     if (!open) return
@@ -144,6 +159,7 @@ export function ForumLoungeSheet({
       setDraft('')
       setMessages((prev) => mergeMessages(prev, [message]))
       lastCreatedAtRef.current = message.createdAt
+      onMarkRead?.(message.createdAt)
       shouldStickToBottomRef.current = true
       requestAnimationFrame(scrollToBottom)
     } catch (err) {
